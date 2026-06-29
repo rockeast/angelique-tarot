@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>無料音声読み上げ（Web Speech API）テスト</title>
+    <style>
+        body {
+            background: #0c0a1a;
+            color: #e2e8f0;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        button {
+            background: linear-gradient(135deg, #d4a853, #b38b3d);
+            color: #0c0a1a;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        p {
+            max-width: 400px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <h2>無料音声読み上げのテスト</h2>
+    <p id="text">私は大天使ミカエル。迷えるあなたに、聖なる光と導きを与えましょう。恐れることはありません、私が守っています。</p>
+    
+    <button onclick="playAudio()">▶︎ サンプル音声を再生する</button>
+
+    <script>
+        function playAudio() {
+            const text = document.getElementById('text').innerText;
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // 日本語に設定
+            utterance.lang = 'ja-JP';
+            // 少し威厳を出すためにピッチを低めに設定
+            utterance.pitch = 0.8;
+            utterance.rate = 0.9;
+
+            window.speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
