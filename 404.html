@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - Angelique Tarot</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Noto+Serif+JP:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            overflow: hidden;
+            background: #0c0a1a;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #fff;
+            text-align: center;
+        }
+        .error-container {
+            position: relative;
+            z-index: 2;
+            padding: 60px;
+            background: rgba(15, 10, 30, 0.8);
+            border: 1px solid rgba(212, 168, 83, 0.4);
+            border-radius: 40px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 80px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 1.5s ease-out;
+        }
+        .error-code {
+            font-family: 'Cinzel', serif;
+            font-size: 5rem;
+            color: var(--gold-light);
+            margin-bottom: 10px;
+            opacity: 0.5;
+            letter-spacing: 0.2em;
+        }
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: floating 4s ease-in-out infinite;
+        }
+        .error-title {
+            font-family: var(--font-heading);
+            font-size: 1.8rem;
+            color: var(--gold-light);
+            margin-bottom: 20px;
+            text-shadow: 0 0 15px rgba(212, 168, 83, 0.5);
+        }
+        .error-message {
+            color: var(--lavender);
+            line-height: 1.8;
+            margin-bottom: 40px;
+            font-size: 1rem;
+        }
+        .home-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #7b5ea7, #d4a853);
+            color: #fff;
+            padding: 15px 40px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-family: var(--font-heading);
+            font-size: 1.1rem;
+            transition: all 0.4s ease;
+            box-shadow: 0 5px 20px rgba(123, 94, 167, 0.3);
+        }
+        .home-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 30px rgba(212, 168, 83, 0.5);
+            filter: brightness(1.1);
+        }
+
+        @keyframes floating {
+            0%, 100% { transform: translateY(0) rotate(0); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="video-background">
+        <video autoplay muted loop playsinline>
+            <source src="テスト動画.mp4" type="video/mp4">
+        </video>
+        <div class="overlay"></div>
+    </div>
+
+    <div class="error-container">
+        <div class="error-code">404</div>
+        <div class="error-icon">✨🕊️✨</div>
+        <h1 class="error-title">Path not found</h1>
+        <p class="error-message">
+            道に迷われたようですね。<br>
+            でもご安心ください。天使たちが、<br>
+            あなたを正しい道へと案内してくれます。
+        </p>
+        <a href="/" class="home-btn">✦ 光の指す方へ戻る ✦</a>
+    </div>
+</body>
+</html>

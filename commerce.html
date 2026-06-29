@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特定商取引法に基づく表記 - Angelique Tarot</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Noto+Serif+JP:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background: #0c0a1a;
+            color: var(--text);
+            overflow-y: auto;
+        }
+        .legal-container {
+            position: relative;
+            z-index: 2;
+            max-width: 860px;
+            width: min(92%, 860px);
+            margin: 60px auto;
+            padding: 48px;
+            background: rgba(15, 10, 30, 0.86);
+            border: 1px solid rgba(212, 168, 83, 0.32);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        }
+        .legal-title {
+            font-family: var(--font-heading);
+            color: var(--gold-light);
+            font-size: 2rem;
+            margin: 0 0 12px;
+            text-align: center;
+        }
+        .legal-note {
+            color: var(--lavender);
+            line-height: 1.8;
+            margin: 0 0 28px;
+            text-align: center;
+        }
+        .commerce-table {
+            width: 100%;
+            border-collapse: collapse;
+            line-height: 1.8;
+        }
+        .commerce-table th,
+        .commerce-table td {
+            border-top: 1px solid rgba(212, 168, 83, 0.22);
+            padding: 16px;
+            vertical-align: top;
+        }
+        .commerce-table th {
+            width: 30%;
+            color: var(--gold-light);
+            font-weight: 600;
+            text-align: left;
+        }
+        .todo {
+            color: #ffd08a;
+            font-weight: 700;
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 32px;
+            color: var(--gold-light);
+            text-decoration: none;
+        }
+        @media (max-width: 640px) {
+            .legal-container { padding: 28px 20px; }
+            .commerce-table th,
+            .commerce-table td {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .commerce-table td { padding-top: 0; }
+        }
+    </style>
+</head>
+<body>
+    <video autoplay loop muted playsinline id="bg-video">
+        <source src="テスト動画.mp4" type="video/mp4">
+    </video>
+    <div class="legal-container">
+        <h1 class="legal-title">特定商取引法に基づく表記</h1>
+        <p class="legal-note">以下の未記入項目を実際の運営情報に置き換えてから公開してください。</p>
+        <table class="commerce-table">
+            <tr>
+                <th>販売事業者</th>
+                <td><span class="todo">TODO: 法人名または個人事業主名</span></td>
+            </tr>
+            <tr>
+                <th>運営責任者</th>
+                <td><span class="todo">TODO: 運営責任者名</span></td>
+            </tr>
+            <tr>
+                <th>所在地</th>
+                <td>ご請求いただいた場合、遅滞なく開示いたします。</td>
+            </tr>
+            <tr>
+                <th>電話番号</th>
+                <td>ご請求いただいた場合、遅滞なく開示いたします。</td>
+            </tr>
+            <tr>
+                <th>メールアドレス</th>
+                <td><span class="todo">TODO: 問い合わせ用メールアドレス</span></td>
+            </tr>
+            <tr>
+                <th>販売価格</th>
+                <td>月額プラン: 480円（税込） / 年間プラン: 3,980円（税込）</td>
+            </tr>
+            <tr>
+                <th>商品代金以外の必要料金</th>
+                <td>インターネット接続料金、通信料金等はユーザーの負担となります。</td>
+            </tr>
+            <tr>
+                <th>支払方法</th>
+                <td>クレジットカード決済（Stripe）</td>
+            </tr>
+            <tr>
+                <th>支払時期</th>
+                <td>サブスクリプション申込時および更新時に決済されます。</td>
+            </tr>
+            <tr>
+                <th>役務の提供時期</th>
+                <td>決済完了後、直ちにプレミアム機能を利用できます。</td>
+            </tr>
+            <tr>
+                <th>解約方法</th>
+                <td><span class="todo">TODO: Stripeカスタマーポータル、問い合わせ、管理画面など実際の解約手段を記載</span></td>
+            </tr>
+            <tr>
+                <th>返品・キャンセル</th>
+                <td>デジタルサービスの性質上、決済完了後の返金には原則対応していません。ただし、法令上必要な場合または当社が認める場合を除きます。</td>
+            </tr>
+            <tr>
+                <th>動作環境</th>
+                <td>最新版の主要ブラウザ（Safari、Chrome、Edge、Firefox）での利用を推奨します。</td>
+            </tr>
+        </table>
+        <a href="/" class="back-link">Angelique Tarot トップページへ戻る</a>
+    </div>
+</body>
+</html>

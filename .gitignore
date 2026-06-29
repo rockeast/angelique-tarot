@@ -1,0 +1,18 @@
+# 🔒 環境変数ファイル（APIキーが含まれるため絶対にコミットしない）
+.env
+.env.local
+.env.production
+
+# Node.js
+node_modules/
+
+# データファイル（ユーザー情報が含まれる）
+data/
+
+# macOS
+.DS_Store
+._*
+
+# ログ
+*.log
+npm-debug.log*

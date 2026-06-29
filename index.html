@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Angelique Tarot（アンジェリック・タロット）へようこそ。4大天使（ミカエル、ラファエル、ガブリエル、ウリエル）がAIを通じて、あなたに最も必要な神託（アークエンジェル・オラクル）を届けます。">
+    <meta property="og:title" content="Angelique Tarot ─ 4大天使の神託（アークエンジェル・オラクル）">
+    <meta property="og:description" content="4大天使の加護を受け、AIが紡ぐ神秘のリーディング。Angelique Tarotであなたの未来を照らします。">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="assets/ogp-main.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <title>Angelique Tarot ─ 4大天使の神託（アークエンジェル・オラクル）</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;700&family=Noto+Serif+JP:wght@300;400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <!-- ========== 背景動画 ========== -->
+    <video autoplay loop muted playsinline id="bg-video">
+        <source src="テスト動画.mp4" type="video/mp4">
+    </video>
+
+    <!-- ========== 幻想エフェクト群 ========== -->
+    <canvas id="particle-canvas"></canvas>
+    <div class="aurora-bg">
+        <div class="aurora-wave aurora-wave-1"></div>
+        <div class="aurora-wave aurora-wave-2"></div>
+        <div class="aurora-wave aurora-wave-3"></div>
+    </div>
+    <div class="floating-feathers" id="floating-feathers"></div>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        <div class="glow glow-3"></div>
+    </div>
+
+    <!-- ========== ヘッダー / カウンター / ログイン ========== -->
+    <div class="app-header">
+        <div class="usage-counter" id="usage-counter">
+            <div class="usage-counter-inner">
+                <img src="assets/icon-oracle.png" alt="Oracle" class="icon-tiny" onerror="this.style.display='none'">
+                <span class="usage-text" id="usage-text">残り <strong id="usage-remaining">1</strong> 回</span>
+            </div>
+        </div>
+        <button class="auth-btn" id="header-auth-btn">ログイン</button>
+    </div>
+
+    <div id="app">
+        <!-- ========== フェーズ0: 設定 & パック開封 ========== -->
+        <section id="deck-container">
+            <div class="title-area">
+                <p class="pre-title">✦ Archangel Oracle ✦</p>
+                <img src="assets/title-logo.png" alt="Angelique Tarot" class="title-logo">
+                <h1 class="title hidden">Angelique Tarot</h1>
+                <p class="subtitle">4大天使の加護が導く、聖なる神託</p>
+            </div>
+
+            <!-- 占い設定UI -->
+            <div class="reading-settings" id="reading-settings">
+                <div class="setting-group">
+                    <label>スプレッド（展開法）</label>
+                    <div class="setting-options" id="spread-options">
+                        <button class="setting-btn active" data-value="1">1枚引き</button>
+                        <button class="setting-btn" data-value="3">3枚引き</button>
+                        <button class="setting-btn premium-locked" data-value="5">5枚引き 🔒</button>
+                        <button class="setting-btn premium-locked" data-value="7">7枚引き 🔒</button>
+                        <button class="setting-btn premium-locked" data-value="hexagram">相性 (ヘキサグラム) 🔒</button>
+                        <button class="setting-btn premium-locked" data-value="10" style="width:100%; margin-top:8px;">10枚引き (ケルト十字) 🔒</button>
+                    </div>
+                </div>
+                <div class="setting-group" id="angel-persona-group">
+                    <label>守護天使の指名 <span style="font-size: 0.8rem; color: #d4a853;">(Premium限定)</span></label>
+                    <div class="setting-options" id="angel-options">
+                        <button class="setting-btn active" data-value="default">おまかせ</button>
+                        <button class="setting-btn premium-locked" data-value="michael">ミカエル 🔒</button>
+                        <button class="setting-btn premium-locked" data-value="raphael">ラファエル 🔒</button>
+                        <button class="setting-btn premium-locked" data-value="gabriel">ガブリエル 🔒</button>
+                        <button class="setting-btn premium-locked" data-value="uriel">ウリエル 🔒</button>
+                    </div>
+                    <div id="angel-description" style="font-size: 0.85rem; color: #a0a0a0; margin-top: 10px; min-height: 2.8em; line-height: 1.4;">各天使には得意なサポート分野があります。お悩みに合わせて指名してください。</div>
+                </div>
+                <div class="setting-group">
+                    <label>占うテーマ</label>
+                    <div class="setting-options" id="theme-options">
+                        <button class="setting-btn active" data-value="総合">総合</button>
+                        <button class="setting-btn" data-value="恋愛">恋愛</button>
+                        <button class="setting-btn" data-value="仕事">仕事</button>
+                        <button class="setting-btn" data-value="金運">金運</button>
+                    </div>
+                </div>
+                <div class="setting-group" style="margin-top: 10px;">
+                    <label>具体的なお悩み (任意)</label>
+                    <textarea id="reading-worry" class="setting-textarea" placeholder="例: 職場の人間関係で悩んでいます。今後のアドバイスが欲しいです。" rows="2"></textarea>
+                </div>
+                <div class="setting-group">
+                    <label>お相手について (任意)</label>
+                    <input type="text" id="reading-target" class="setting-input" placeholder="例: 片思いの相手、彼氏、上司 など">
+                </div>
+            </div>
+
+            <div class="deck-pack" id="deck-pack">
+                <div class="pack-inner">
+                    <img src="assets/card-back.png" alt="Tarot Deck" class="pack-image">
+                </div>
+                <div class="pack-glow"></div>
+                <div class="feathers" id="feathers"></div>
+            </div>
+            <p class="tap-hint">▽ タップして占いを開始 ▽</p>
+        </section>
+
+        <!-- ========== フェーズ2: カードを選ぶ ========== -->
+        <section id="spread-container" class="hidden">
+            <h2 class="spread-title" id="spread-instruction">心に響くカードを選んでください</h2>
+            <div class="card-spread" id="card-spread">
+                <!-- JSでカード生成 -->
+            </div>
+            <div class="selection-progress hidden" id="selection-progress">
+                残り <span id="selection-remaining">3</span> 枚
+            </div>
+        </section>
+
+        <!-- ========== フェーズ3: リビール＆結果 ========== -->
+        <section id="reveal-container" class="hidden">
+            <h2 class="spread-title" id="reveal-title">カードが語る天使のメッセージ</h2>
+            <div class="reveal-card-scene">
+                <!-- 魔法陣 -->
+                <div class="magic-circle" id="magic-circle">
+                    <svg viewBox="0 0 300 300" class="magic-circle-svg">
+                        <circle cx="150" cy="150" r="140" fill="none" stroke="url(#goldGrad)" stroke-width="1" opacity="0.6"/>
+                        <circle cx="150" cy="150" r="120" fill="none" stroke="url(#goldGrad)" stroke-width="0.5" opacity="0.4" stroke-dasharray="4 6"/>
+                        <circle cx="150" cy="150" r="100" fill="none" stroke="url(#goldGrad)" stroke-width="0.5" opacity="0.3"/>
+                        <!-- 六芒星 -->
+                        <polygon points="150,20 270,230 30,230" fill="none" stroke="url(#goldGrad)" stroke-width="0.8" opacity="0.5"/>
+                        <polygon points="150,280 30,70 270,70" fill="none" stroke="url(#goldGrad)" stroke-width="0.8" opacity="0.5"/>
+                        <!-- ルーン文字風の装飾 -->
+                        <text x="150" y="18" text-anchor="middle" fill="url(#goldGrad)" font-size="8" opacity="0.6">✦ ☽ ✧ ☆ ✦ ☾ ✧</text>
+                        <text x="150" y="290" text-anchor="middle" fill="url(#goldGrad)" font-size="8" opacity="0.6">✧ ☆ ✦ ☽ ✧ ☾ ✦</text>
+                        <defs>
+                            <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#d4a853"/>
+                                <stop offset="50%" stop-color="#f5e6b8"/>
+                                <stop offset="100%" stop-color="#d4a853"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <!-- 神聖光線 -->
+                <div class="divine-rays" id="divine-rays"></div>
+                <!-- ここにJSで引いたカードを配置 -->
+                <div class="revealed-cards-container" id="revealed-cards-container">
+                    <!-- JS generated cards go here -->
+                </div>
+            </div>
+            <div class="reading-result" id="reading-result">
+                <div class="loading-indicator hidden" id="loading">
+                    <div class="angel-loading">
+                        <span class="wing-l">🕊</span>
+                        <span>天使がメッセージを紡いでいます…</span>
+                        <span class="wing-r">🕊</span>
+                    </div>
+                    <div class="spinner"></div>
+                </div>
+                <div class="result-text" id="result-text"></div>
+
+                <!-- プレミアム誘導バナー（無料ユーザーに表示） -->
+                <div class="premium-teaser hidden" id="premium-teaser">
+                    <div class="premium-teaser-glow"></div>
+                    <p class="premium-teaser-text">
+                        ✦ <strong>プレミアム会員</strong>なら、さらに深い天使の導きを受け取れます
+                    </p>
+                    <button class="premium-teaser-btn" id="premium-teaser-btn">
+                        詳しく見る →
+                    </button>
+                </div>
+            </div>
+
+            <!-- シェアボタン群 -->
+            <div class="share-section hidden" id="share-section">
+                <p class="share-label">✦ 天使のメッセージをシェア ✦</p>
+                <div class="share-buttons">
+                    <button class="share-btn share-x" id="share-x" title="Xでシェア">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    </button>
+                    <button class="share-btn share-fb" id="share-fb" title="Facebookでシェア">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    </button>
+                    <button class="share-btn share-threads" id="share-threads" title="Threadsでシェア">
+                        <svg viewBox="0 0 192 192" width="18" height="18" fill="currentColor"><path d="M141.537 88.9883C140.71 88.5919 139.87 88.2104 139.019 87.8451C137.537 60.5382 122.616 44.905 97.5619 44.745C97.4484 44.7443 97.3355 44.7443 97.222 44.7443C82.2364 44.7443 69.7731 51.1409 62.102 62.7807L75.881 72.2328C81.6116 63.5383 90.6052 61.6848 97.2286 61.6848C97.3051 61.6848 97.3819 61.6848 97.4576 61.6855C105.707 61.7381 111.932 64.1366 115.961 68.814C118.893 72.2193 120.854 76.925 121.825 82.8638C114.511 81.6207 106.601 81.2385 98.145 81.7233C74.3247 83.0954 59.0111 96.9879 60.0396 116.292C60.5615 126.084 65.4397 134.508 73.775 140.011C80.8224 144.663 89.899 146.938 99.3323 146.423C111.79 145.74 121.563 140.987 128.381 132.296C133.559 125.696 136.834 117.143 138.28 106.366C144.217 109.949 148.617 114.664 151.047 120.332C155.179 129.967 155.42 145.8 142.501 158.708C131.182 170.016 117.576 174.908 97.0135 175.059C74.2042 174.89 56.9538 167.575 45.7381 153.317C35.2355 139.966 29.8077 120.682 29.6052 96C29.8077 71.3178 35.2355 52.0336 45.7381 38.6827C56.9538 24.4249 74.2039 17.11 97.0132 16.9405C119.988 17.1113 137.539 24.4614 149.184 38.788C154.894 45.8136 159.199 54.6488 162.037 64.9503L178.184 60.6422C174.744 47.9622 169.331 37.0357 161.965 27.974C147.036 9.60668 125.202 0.195148 97.0695 0H96.9569C68.8816 0.19447 47.2921 9.6418 32.7883 28.0793C19.8819 44.4864 13.2244 67.3157 13.0007 95.9325L13 96L13.0007 96.0675C13.2244 124.684 19.8819 147.514 32.7883 163.921C47.2921 182.358 68.8816 191.806 96.9569 192H97.0695C122.03 191.827 139.624 185.292 154.118 170.811C173.081 151.866 172.51 128.119 166.26 113.541C161.776 103.087 153.227 94.5962 141.537 88.9883ZM98.4405 129.507C88.0005 130.095 77.1544 125.409 76.6196 115.372C76.2232 107.93 81.9158 99.626 99.0812 98.6368C101.047 98.5234 102.976 98.468 104.871 98.468C111.106 98.468 116.939 99.0737 122.242 100.233C120.264 124.935 108.662 128.946 98.4405 129.507Z" /></svg>
+                    </button>
+                    <button class="share-btn share-line" id="share-line" title="LINEでシェア">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.627-.63.349 0 .631.285.631.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.281.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
+                    </button>
+                    <button class="share-btn share-copy" id="share-copy" title="リンクをコピー">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>
+                <p class="share-bonus-hint" id="share-bonus-hint">シェアすると追加1回占えます ✦</p>
+            </div>
+
+            <div class="result-actions hidden" id="result-actions">
+                <button class="action-btn favorite-btn" id="save-reading-btn" title="この鑑定結果をお気に入りに保存">
+                    <span class="star-icon">☆</span> お気に入り
+                </button>
+                <button class="action-btn download-btn" id="download-pdf-btn" title="鑑定書をPDFで保存">
+                    <span>📜</span> 鑑定書を保存
+                </button>
+            </div>
+
+            <button class="retry-btn hidden" id="retry-btn">✦ もう一度占う ✦</button>
+        </section>
+
+        <!-- ========== フッター ========== -->
+        <footer class="app-footer">
+            <div class="footer-links" style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                <a href="terms.html" class="footer-link">利用規約</a>
+                <a href="privacy.html" class="footer-link">プライバシーポリシー</a>
+                <a href="commerce.html" class="footer-link">特定商取引法に基づく表記</a>
+                <a href="contact.html" class="footer-link">お問い合わせ</a>
+            </div>
+            <p class="footer-copy">&copy; 2026 Angelique Tarot. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- ========== プレミアムモーダル ========== -->
+    <div class="modal-overlay hidden" id="premium-modal-overlay">
+        <div class="premium-modal" id="premium-modal">
+            <button class="modal-close" id="modal-close">✕</button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <img src="assets/icon-premium.png" alt="Premium" class="icon-modal" onerror="this.style.display='none'">
+                    <h2 class="modal-title">Angelique Tarot Premium</h2>
+                    <p class="modal-subtitle">天使の完全な導きを受け取る</p>
+                </div>
+
+                <div class="modal-features">
+                    <div class="feature-item">
+                        <img src="assets/icon-infinite.png" class="feature-icon-img" alt="Infinite">
+                        <div class="feature-text">
+                            <strong>無制限占い</strong>
+                            <span>回数制限なし、いつでもどこでも</span>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <img src="assets/icon-reading.png" class="feature-icon-img" alt="Reading">
+                        <div class="feature-text">
+                            <strong>深層リーディング</strong>
+                            <span>潜在意識のメッセージ＋開運アクション付き</span>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🃏</span>
+                        <div class="feature-text">
+                            <strong>特別スプレッド</strong>
+                            <span>3枚・5枚・7枚・10枚引き(ケルト十字)が解放</span>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">💝</span>
+                        <div class="feature-text">
+                            <strong>テーマ別占い</strong>
+                            <span>恋愛・仕事・金運の専門鑑定</span>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🚫</span>
+                        <div class="feature-text">
+                            <strong>広告なし</strong>
+                            <span>集中して天使のメッセージを受け取れます</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-pricing">
+                    <div class="price-card price-card-monthly" data-plan="monthly">
+                        <span class="price-label">月額プラン</span>
+                        <span class="price-amount">¥480<small>/月</small></span>
+                    </div>
+                    <div class="price-card price-card-yearly popular selected" data-plan="yearly">
+                        <span class="popular-badge">2ヶ月分お得</span>
+                        <span class="price-label">年間プラン</span>
+                        <span class="price-amount">¥3,980<small>/年</small></span>
+                        <span class="price-per-month">月あたり ¥332</span>
+                    </div>
+                </div>
+
+                <p class="modal-coming-soon" id="modal-coming-soon">決済はStripeの安全な画面で行われます</p>
+
+                <button class="modal-cta-btn" id="modal-cta-btn">
+                    ✦ プレミアムプランを購入する ✦
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 制限到達オーバーレイ ========== -->
+    <div class="limit-overlay hidden" id="limit-overlay">
+        <div class="limit-card">
+            <div class="limit-image-container">
+                <img src="assets/angel-sorry.png" alt="Sorry Angel" class="angel-sorry-img" onerror="this.style.display='none'">
+            </div>
+            <h2 class="limit-title">本日の無料占いは終了しました</h2>
+            <p class="limit-message">ごめんなさい、天使たちはまた明日あなたを待っています</p>
+
+            <div class="limit-actions">
+                <button class="limit-ad-btn" id="limit-ad-btn">
+                    <span>▶︎</span> 動画広告を見て無料で占う
+                </button>
+                <button class="limit-share-btn" id="limit-share-btn">
+                    <span>📤</span> シェアして追加1回占う
+                </button>
+                <button class="limit-premium-btn" id="limit-premium-btn">
+                    <span>👼</span> プレミアムで無制限に
+                </button>
+            </div>
+
+            <div class="limit-timer">
+                <span>次の無料占いまで</span>
+                <span class="limit-countdown" id="limit-countdown">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 今日の守護天使モーダル ========== -->
+    <div class="modal-overlay hidden" id="daily-message-overlay" style="z-index: 4000;">
+        <div class="daily-message-modal">
+            <div class="daily-angel-image">
+                <img src="assets/ogp-main.png" id="daily-angel-img" alt="Guardian Angel">
+            </div>
+            <div class="daily-message-content">
+                <p class="daily-date" id="daily-date"></p>
+                <h2 class="daily-title">今日の守護天使</h2>
+                <h3 class="daily-angel-name" id="daily-angel-name"></h3>
+                <div class="daily-text-box">
+                    <p id="daily-text"></p>
+                </div>
+                <button class="daily-close-btn" id="daily-message-close">✦ 導きを受け取る ✦</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== マイページモーダル ========== -->
+    <div class="modal-overlay hidden" id="mypage-modal-overlay">
+        <div class="premium-modal mypage-modal" id="mypage-modal">
+            <button class="modal-close" id="mypage-close">✕</button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <img src="assets/icon-user.png" alt="User" class="icon-modal" onerror="this.style.display='none'">
+                    <h2 class="modal-title">マイページ</h2>
+                    <p class="modal-subtitle" id="mypage-email"></p>
+                    <p class="mypage-plan-badge" id="mypage-plan-badge"></p>
+                </div>
+
+                <div class="mypage-section">
+                    <h3>過去の神託 (鑑定履歴)</h3>
+                    <div class="history-tabs" id="history-tabs">
+                        <button class="history-tab active" data-filter="all">すべて</button>
+                        <button class="history-tab" data-filter="favorite">お気に入り ★</button>
+                    </div>
+                    <div class="history-list" id="history-list">
+                        <!-- 履歴アイテムがここに動的に追加される -->
+                    </div>
+                </div>
+
+                <button class="mypage-logout-btn" id="mypage-logout-btn">
+                    ログアウト
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ========== カード詳細モーダル ========== -->
+    <div class="modal-overlay hidden" id="card-detail-overlay" style="z-index: 3000;">
+        <div class="card-detail-modal">
+            <button class="modal-close" id="card-detail-close">✕</button>
+            <div class="card-detail-content">
+                <div class="card-detail-image-box">
+                    <img src="" id="detail-card-img" alt="Card Detail">
+                </div>
+                <div class="card-detail-info">
+                    <h3 id="detail-card-name" class="detail-card-name"></h3>
+                    <p id="detail-card-position" class="detail-card-position"></p>
+                    <div class="detail-card-meaning">
+                        <h4>✦ 天使の教え ✦</h4>
+                        <p id="detail-card-desc"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 認証モーダル ========== -->
+    <div class="modal-overlay hidden" id="auth-modal-overlay">
+        <div class="premium-modal auth-modal" id="auth-modal">
+            <button class="modal-close" id="auth-modal-close">✕</button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-icon">🔐</div>
+                    <h2 class="modal-title" id="auth-title">ログイン</h2>
+                    <p class="modal-subtitle" id="auth-subtitle">アカウントに接続して記録を保存</p>
+                </div>
+
+                <form id="auth-form" class="auth-form">
+                    <div class="input-group hidden" id="auth-nickname-group">
+                        <label>ニックネーム</label>
+                        <input type="text" id="auth-nickname" placeholder="天使 太郎">
+                    </div>
+                    <div class="input-group hidden" id="auth-birthdate-group">
+                        <label>生年月日</label>
+                        <input type="date" id="auth-birthdate">
+                    </div>
+                    <div class="input-group">
+                        <label>メールアドレス</label>
+                        <input type="email" id="auth-email" required placeholder="angel@example.com">
+                    </div>
+                    <div class="input-group">
+                        <label>パスワード</label>
+                        <input type="password" id="auth-password" required placeholder="••••••••">
+                    </div>
+                    <div class="auth-error hidden" id="auth-error"></div>
+                    <button type="submit" class="modal-cta-btn auth-submit-btn" id="auth-submit-btn">
+                        ログイン
+                    </button>
+                </form>
+                
+                <p class="auth-switch">
+                    <span id="auth-switch-text">アカウントをお持ちでないですか？</span>
+                    <a href="#" id="auth-switch-btn">新規登録</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 音声アセット ========== -->    <audio id="se-open" src="assets/open.mp3" preload="auto"></audio>
+    <audio id="se-flip" src="assets/flip.mp3" preload="auto"></audio>
+    <audio id="se-select" src="assets/select.mp3" preload="auto"></audio>
+    <audio id="se-success" src="assets/success.mp3" preload="auto"></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
