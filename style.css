@@ -2212,3 +2212,56 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);
         font-size: 9pt;
     }
 }
+
+/* ----------------------------------------------------
+   天使選択ボタン用 ツールチップ (Tooltip)
+   ---------------------------------------------------- */
+.setting-btn[data-tooltip] {
+    position: relative;
+}
+
+.setting-btn[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    color: #e2e8f0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    z-index: 100;
+    border: 1px solid rgba(212, 168, 83, 0.4);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+    opacity: 0;
+    animation: fadeInTooltip 0.2s forwards;
+    white-space: normal;
+    width: 220px;
+    text-align: left;
+    line-height: 1.5;
+    /* サイバーパンク風グロウ */
+    box-shadow: 0 0 10px rgba(212, 168, 83, 0.2), inset 0 0 5px rgba(212, 168, 83, 0.1);
+}
+
+.setting-btn[data-tooltip]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: rgba(212, 168, 83, 0.4) transparent transparent transparent;
+    z-index: 100;
+    pointer-events: none;
+    opacity: 0;
+    animation: fadeInTooltip 0.2s forwards;
+}
+
+@keyframes fadeInTooltip {
+    to {
+        opacity: 1;
+    }
+}
