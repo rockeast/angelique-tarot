@@ -201,7 +201,7 @@ const authenticate = async (req, res, next) => {
             email: user.email, 
             nickname: profile?.nickname,
             birthdate: profile?.birthdate,
-            isPremium: (user.email === 'pyramidshop.88@gmail.com') ? true : (profile?.is_premium || false)
+            isPremium: (user.email === 'pyramidshop.88@gmail.com' || user.email === 'angeliquetarot.jp@gmail.com') ? true : (profile?.is_premium || false)
         };
         next();
     } catch (err) {
@@ -274,7 +274,7 @@ app.post('/api/login', async (req, res) => {
                 email: data.user.email,
                 nickname: profile?.nickname,
                 birthdate: profile?.birthdate,
-                isPremium: (data.user.email === 'pyramidshop.88@gmail.com') ? true : (profile?.is_premium || false)
+                isPremium: (data.user.email === 'pyramidshop.88@gmail.com' || data.user.email === 'angeliquetarot.jp@gmail.com') ? true : (profile?.is_premium || false)
             }
         });
     } catch (e) {
