@@ -1366,6 +1366,141 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);
 }
 
 /* ========================================
+   公開案内ページ
+   ======================================== */
+.content-page {
+    position: relative;
+    z-index: 2;
+    width: min(92%, 920px);
+    margin: 48px auto;
+    padding: clamp(28px, 5vw, 60px);
+    background: rgba(15, 10, 30, 0.9);
+    border: 1px solid rgba(212, 168, 83, 0.4);
+    border-radius: 24px;
+    color: var(--text);
+    line-height: 1.9;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+}
+
+.content-page-title {
+    margin: 0 0 18px;
+    color: var(--gold-light);
+    font-family: var(--font-heading);
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    line-height: 1.35;
+    text-align: center;
+}
+
+.content-page-lead {
+    max-width: 700px;
+    margin: 0 auto 42px;
+    color: var(--lavender);
+    text-align: center;
+}
+
+.content-section {
+    margin-top: 42px;
+}
+
+.content-section h2 {
+    margin: 0 0 16px;
+    color: var(--gold-light);
+    font-family: var(--font-heading);
+    font-size: 1.35rem;
+    line-height: 1.5;
+}
+
+.content-section h2::before {
+    content: '✦';
+    margin-right: 10px;
+    color: var(--gold);
+}
+
+.content-section p {
+    margin: 0 0 16px;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.content-section ul,
+.content-section ol {
+    margin: 0 0 18px 1.4em;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.content-section li {
+    margin-bottom: 10px;
+    padding-left: 6px;
+}
+
+.content-section a {
+    color: var(--gold-light);
+}
+
+.content-note {
+    margin-top: 24px;
+    padding: 18px 20px;
+    border-left: 3px solid var(--gold);
+    background: rgba(212, 168, 83, 0.08);
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.content-page-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px 24px;
+    margin-top: 52px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(212, 168, 83, 0.2);
+}
+
+.content-page-nav a {
+    color: var(--gold-light);
+    text-decoration: none;
+    opacity: 0.82;
+}
+
+.content-page-nav a:hover {
+    color: var(--gold);
+    opacity: 1;
+}
+
+.faq-list {
+    display: grid;
+    gap: 24px;
+}
+
+.faq-item {
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(212, 168, 83, 0.18);
+}
+
+.faq-item:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.faq-item h2 {
+    margin-bottom: 10px;
+    font-family: var(--font-body);
+    font-size: 1.05rem;
+}
+
+@media (max-width: 640px) {
+    .content-page {
+        width: min(94%, 920px);
+        margin: 24px auto;
+        padding: 28px 20px;
+        border-radius: 18px;
+    }
+
+    .content-page-lead {
+        margin-bottom: 30px;
+        text-align: left;
+    }
+}
+
+/* ========================================
    👤 マイページ
    ======================================== */
 .mypage-modal {

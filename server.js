@@ -163,8 +163,13 @@ const __dirname = path.dirname(__filename);
 // scripts must never be downloadable from the public web root.
 const publicRootFiles = new Set([
     'index.html',
+    'about.html',
     'commerce.html',
     'contact.html',
+    'faq.html',
+    'guide.html',
+    'robots.txt',
+    'sitemap.xml',
     'terms.html',
     'privacy.html',
     '404.html',
