@@ -172,6 +172,7 @@ const publicRootFiles = new Set([
     'sitemap.xml',
     'terms.html',
     'privacy.html',
+    'tarot-card.html',
     '404.html',
     'script.js',
     'style.css',
