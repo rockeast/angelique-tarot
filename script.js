@@ -1195,10 +1195,17 @@ document.addEventListener('DOMContentLoaded', () => {
     createDivineRays();
 
     // マネージャー初期化
+    let selectedPlan = 'yearly';
+    let pendingCheckoutPlan = null;
     const authManager = new AuthManager(async () => {
         await fm.fetchUsage();
         if (fm.usage && fm.usage.isPremium && document.getElementById('premium-modal-overlay')) {
             document.getElementById('premium-modal-overlay').classList.add('hidden');
+        }
+        if (pendingCheckoutPlan && authManager.token) {
+            const plan = pendingCheckoutPlan;
+            pendingCheckoutPlan = null;
+            setTimeout(() => startCheckout(plan), 0);
         }
     });
 
@@ -1652,7 +1659,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ========== 広告視聴ボタン ========== */
     // プラン選択
-    let selectedPlan = 'yearly';
     const priceCards = document.querySelectorAll('.price-card');
     priceCards.forEach(card => {
         card.addEventListener('click', () => {
@@ -1663,37 +1669,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Stripe Checkout呼び出し
-    if (modalCtaBtn) {
-        modalCtaBtn.addEventListener('click', async () => {
-            if (!authManager.token) {
-                closePremiumModal();
-                authManager.openModal();
-                return;
-            }
+    async function startCheckout(plan) {
+        if (!authManager.token) {
+            pendingCheckoutPlan = plan;
+            closePremiumModal();
+            authManager.openModal();
+            return;
+        }
 
-            modalCtaBtn.disabled = true;
-            modalCtaBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;display:inline-block;border-width:2px;margin-right:8px;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite"></span> 準備中...';
-            
-            try {
-                const res = await fetch('/api/create-checkout-session', {
-                    method: 'POST',
-                    headers: authManager.getAuthHeaders(),
-                    body: JSON.stringify({ planId: selectedPlan })
-                });
-                const data = await res.json();
-                if (data.url) {
-                    window.location.href = data.url; // Stripe checkoutへリダイレクト
-                } else if (data.error) {
-                    alert(data.error);
-                }
-            } catch(e) {
-                console.error(e);
-                alert('決済画面への移動に失敗しました。');
-            } finally {
-                modalCtaBtn.disabled = false;
-                modalCtaBtn.innerHTML = '✦ プレミアムプランを購入する ✦';
+        modalCtaBtn.disabled = true;
+        modalCtaBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;display:inline-block;border-width:2px;margin-right:8px;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite"></span> 準備中...';
+
+        try {
+            const res = await fetch('/api/create-checkout-session', {
+                method: 'POST',
+                headers: authManager.getAuthHeaders(),
+                body: JSON.stringify({ planId: plan })
+            });
+            const data = await res.json();
+            if (data.url) {
+                window.location.href = data.url;
+            } else if (data.error) {
+                alert(data.error);
             }
-        });
+        } catch (e) {
+            console.error(e);
+            alert('決済画面への移動に失敗しました。');
+        } finally {
+            modalCtaBtn.disabled = false;
+            modalCtaBtn.innerHTML = '✦ プレミアムプランを購入する ✦';
+        }
+    }
+
+    if (modalCtaBtn) {
+        modalCtaBtn.addEventListener('click', () => startCheckout(selectedPlan));
     }
 
     // 決済成功時の処理
