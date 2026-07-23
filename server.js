@@ -99,7 +99,11 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
         if (userId) {
             const { error } = await supabase
                 .from('profiles')
-                .update({ is_premium: true })
+                .update({
+                    is_premium: true,
+                    stripe_customer_id: session.customer || null,
+                    stripe_subscription_id: session.subscription || null
+                })
                 .eq('id', userId);
             
             if (error) {
@@ -115,11 +119,32 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
         if (userId) {
             const { error } = await supabase
                 .from('profiles')
-                .update({ is_premium: false })
+                .update({
+                    is_premium: false,
+                    stripe_subscription_id: null
+                })
                 .eq('id', userId);
 
             if (error) {
                 console.error('Error downgrading user after subscription cancellation:', error);
+            }
+        }
+    } else if (event.type === 'customer.subscription.updated') {
+        const subscription = event.data.object;
+        const userId = subscription.metadata?.userId;
+        const activeStatuses = new Set(['active', 'trialing']);
+
+        if (userId) {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    is_premium: activeStatuses.has(subscription.status),
+                    stripe_subscription_id: subscription.id
+                })
+                .eq('id', userId);
+
+            if (error) {
+                console.error('Error syncing subscription status:', error);
             }
         }
     }
@@ -203,7 +228,7 @@ const authenticate = async (req, res, next) => {
             email: user.email, 
             nickname: profile?.nickname,
             birthdate: profile?.birthdate,
-            isPremium: (user.email === 'pyramidshop.88@gmail.com' || user.email === 'angeliquetarot.jp@gmail.com') ? true : (profile?.is_premium || false)
+            isPremium: profile?.is_premium || false
         };
         next();
     } catch (err) {
@@ -276,7 +301,7 @@ app.post('/api/login', async (req, res) => {
                 email: data.user.email,
                 nickname: profile?.nickname,
                 birthdate: profile?.birthdate,
-                isPremium: (data.user.email === 'pyramidshop.88@gmail.com' || data.user.email === 'angeliquetarot.jp@gmail.com') ? true : (profile?.is_premium || false)
+                isPremium: profile?.is_premium || false
             }
         });
     } catch (e) {
@@ -298,10 +323,6 @@ async function getUserUsage(req) {
     const today = getTodayKey();
     const userKey = req.user ? req.user.id : getClientIP(req);
     
-    if (process.env.TEST_PREMIUM_MODE === 'true') {
-        return { userKey, usageData: { count: 0, shared: false, ad_bonus: 0, usage_date: today, isPremium: true } };
-    }
-
     let { data: usageData, error } = await supabase
         .from('daily_usage')
         .select('*')
@@ -319,10 +340,29 @@ async function getUserUsage(req) {
             .insert([{ user_id: userKey, usage_date: today, count: 0, shared: false, ad_bonus: 0 }])
             .select()
             .single();
-        
-        if (insertError) throw new Error(`Error inserting usage: ${insertError.message}`);
-        if (!newUsage) throw new Error('Usage row could not be created.');
-        usageData = newUsage;
+
+        if (insertError) {
+            // Another request may have created today's row between the select and insert.
+            // Reuse that row instead of turning a harmless race into a 503 response.
+            if (insertError.code !== '23505') {
+                throw new Error(`Error inserting usage: ${insertError.message}`);
+            }
+
+            const { data: existingUsage, error: rereadError } = await supabase
+                .from('daily_usage')
+                .select('*')
+                .eq('user_id', userKey)
+                .eq('usage_date', today)
+                .single();
+
+            if (rereadError || !existingUsage) {
+                throw new Error(`Error reading existing usage after duplicate insert: ${rereadError?.message || 'row not found'}`);
+            }
+            usageData = existingUsage;
+        } else {
+            if (!newUsage) throw new Error('Usage row could not be created.');
+            usageData = newUsage;
+        }
     }
 
     // プレミアムフラグを統合
@@ -333,10 +373,6 @@ async function getUserUsage(req) {
 
 async function updateUsageCount(userKey, incrementCount, setShared, incrementAdBonus = false) {
     const today = getTodayKey();
-    
-    if (process.env.TEST_PREMIUM_MODE === 'true') {
-        return { count: 1, shared: true, ad_bonus: 0 };
-    }
 
     let updateData = {};
     if (incrementCount) {
@@ -362,10 +398,6 @@ async function updateUsageCount(userKey, incrementCount, setShared, incrementAdB
 }
 
 async function saveReading(identifier, cardName, position, reading, isFull) {
-    if (process.env.TEST_PREMIUM_MODE === 'true') {
-        return 'mock-reading-id-12345';
-    }
-
     const { data, error } = await supabase
         .from('readings')
         .insert([{
@@ -794,6 +826,32 @@ app.post('/api/create-checkout-session', authenticate, async (req, res) => {
     } catch (e) {
         console.error('Stripe Error:', e);
         res.status(500).json({ error: '決済セッションを作成できませんでした。' });
+    }
+});
+
+app.post('/api/create-portal-session', authenticate, async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'ログインが必要です。' });
+
+    try {
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('stripe_customer_id')
+            .eq('id', req.user.id)
+            .single();
+
+        if (error || !profile?.stripe_customer_id) {
+            return res.status(400).json({ error: 'Stripe顧客情報が見つかりません。' });
+        }
+
+        const session = await stripe.billingPortal.sessions.create({
+            customer: profile.stripe_customer_id,
+            return_url: `${req.protocol}://${req.get('host')}/`,
+        });
+
+        res.json({ url: session.url });
+    } catch (e) {
+        console.error('Stripe portal error:', e);
+        res.status(500).json({ error: 'プラン管理画面を開けませんでした。' });
     }
 });
 
