@@ -738,12 +738,22 @@ class AuthManager {
         document.body.removeChild(link);
     }
 
-    exportPDF(item, dateStr) {
+    async exportPDF(item, dateStr) {
         // PDF用の一時的なコンテナを作成
         const container = document.createElement('div');
         container.style.backgroundColor = '#fdfbf7'; // 幻想的なクリームホワイト
         container.style.color = '#333333';
         container.style.fontFamily = "'Noto Serif JP', serif";
+        container.style.width = '186mm';
+        container.style.minHeight = '273mm';
+        container.style.boxSizing = 'border-box';
+        container.style.padding = '10mm 12mm';
+        container.style.margin = '0';
+        container.style.position = 'absolute';
+        container.style.left = '-10000px';
+        container.style.top = '0';
+        container.style.overflowWrap = 'anywhere';
+        container.style.wordBreak = 'break-word';
         
         let cardImagesHTML = '';
         if (item.cards && Array.isArray(item.cards)) {
@@ -781,7 +791,7 @@ class AuthManager {
         </div>`;
         
         container.innerHTML = `
-            <div style="text-align: center; margin-bottom: 20px;">
+            <div class="pdf-keep-together" style="text-align: center; margin-bottom: 20px; break-inside: avoid; page-break-inside: avoid;">
                 <div style="color: #d4a853; font-size: 16px; margin-bottom: 8px; opacity: 0.8;">✦ ✧ ✦</div>
                 <h1 style="font-family: 'Cinzel Decorative', serif; color: #b38b3d; font-size: 28px; margin-bottom: 10px; letter-spacing: 3px;">Angelique Tarot</h1>
                 <p style="font-size: 13px; color: #777; margin-bottom: 5px; letter-spacing: 2px;">The Oracle of Archangels</p>
@@ -789,14 +799,14 @@ class AuthManager {
             
             ${decorativeDivider}
             
-            <div style="margin-bottom: 30px; display: flex; justify-content: space-between; font-size: 12px; color: #666; padding: 0 10px;">
+            <div class="pdf-keep-together" style="margin-bottom: 30px; display: flex; justify-content: space-between; font-size: 12px; color: #666; padding: 0 10px; break-inside: avoid; page-break-inside: avoid;">
                 <span>鑑定日時：${dateStr}</span>
                 <span>展開法：${item.position || '鑑定結果'}</span>
             </div>
             
-            <div style="margin-bottom: 30px; padding: 25px 20px; background: rgba(253, 252, 247, 0.7); border-radius: 8px; text-align: center;">
+            <div class="pdf-keep-together" style="margin-bottom: 30px; padding: 25px 20px; background: rgba(253, 252, 247, 0.7); border-radius: 8px; text-align: center; break-inside: avoid; page-break-inside: avoid;">
                 <h2 style="font-size: 18px; color: #b38b3d; margin-top: 0; margin-bottom: 20px; letter-spacing: 1px;">✦ 導かれたカード ✦</h2>
-                <div style="display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 20px;">
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-bottom: 20px; break-inside: avoid; page-break-inside: avoid;">
                     ${cardImagesHTML}
                 </div>
                 <p style="font-size: 15px; line-height: 1.6; font-weight: bold; color: #555; margin: 0;">${item.cardName.replace(/\n/g, '<br>')}</p>
@@ -804,58 +814,73 @@ class AuthManager {
             
             ${decorativeDivider}
             
-            <div style="margin-bottom: 40px; padding: 0 10px;">
+            <div style="margin-bottom: 40px; padding: 0 10px; break-inside: auto; page-break-inside: auto;">
                 <h2 style="font-size: 18px; color: #b38b3d; margin-top: 0; margin-bottom: 25px; text-align: center; letter-spacing: 1px;">✦ 天使からのメッセージ ✦</h2>
-                <div style="font-size: 14px; line-height: 2.0; text-align: justify; color: #444; letter-spacing: 0.5px;">
+                <div style="font-size: 14px; line-height: 2.0; text-align: left; color: #444; letter-spacing: 0.5px; overflow-wrap: anywhere; word-break: break-word; break-inside: auto; page-break-inside: auto;">
                     ${item.reading}
                 </div>
             </div>
             
-            <div style="text-align: center; margin-top: 60px; font-size: 12px; color: #999;">
+            <div class="pdf-keep-together" style="text-align: center; margin-top: 60px; font-size: 12px; color: #999; break-inside: avoid; page-break-inside: avoid;">
                 <p style="margin-bottom: 8px; font-style: italic; color: #d4a853;">May the angels guide your path.</p>
                 <p>Angelique Tarot - ${window.location.origin}</p>
             </div>
         `;
+
+        document.body.appendChild(container);
+        await (document.fonts?.ready || Promise.resolve());
+        await Promise.all(Array.from(container.querySelectorAll('img')).map((image) => {
+            if (image.complete) return Promise.resolve();
+            return new Promise((resolve) => {
+                image.addEventListener('load', resolve, { once: true });
+                image.addEventListener('error', resolve, { once: true });
+            });
+        }));
         
         // オプション設定
         const opt = {
-            margin:       [20, 18, 20, 18],
+            margin:       [12, 12, 12, 12],
             filename:     `tarot_reading_${new Date(item.timestamp).getTime()}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#fdfbf7' },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+            pagebreak:    { mode: ['css', 'legacy'], avoid: ['.pdf-keep-together'] }
         };
         
         // html2pdf実行
         if (typeof html2pdf !== 'undefined') {
-            html2pdf().set(opt).from(container).toPdf().get('pdf').then(function (pdf) {
-                const totalPages = pdf.internal.getNumberOfPages();
-                for (let i = 1; i <= totalPages; i++) {
-                    pdf.setPage(i);
-                    // 幻想的な二重枠をすべてのページに描画
-                    pdf.setDrawColor(212, 168, 83); // #d4a853
-                    
-                    // 外枠
-                    pdf.setLineWidth(0.6);
-                    pdf.rect(8, 8, 194, 281);
-                    
-                    // 内枠
-                    pdf.setLineWidth(0.2);
-                    pdf.rect(10, 10, 190, 277);
-                    
-                    // 四隅の装飾（ひし形）
-                    pdf.setFillColor(212, 168, 83);
-                    const drawDiamond = (x, y) => {
-                        pdf.lines([[2, -2], [2, 2], [-2, 2], [-2, -2]], x - 2, y + 2, [1, 1], 'F');
-                    };
-                    drawDiamond(10, 10);
-                    drawDiamond(200, 10);
-                    drawDiamond(10, 287);
-                    drawDiamond(200, 287);
-                }
-            }).save();
+            try {
+                await html2pdf().set(opt).from(container).toPdf().get('pdf').then(function (pdf) {
+                    const totalPages = pdf.internal.getNumberOfPages();
+                    for (let i = 1; i <= totalPages; i++) {
+                        pdf.setPage(i);
+                        // 幻想的な二重枠をすべてのページに描画
+                        pdf.setDrawColor(212, 168, 83); // #d4a853
+
+                        // 外枠
+                        pdf.setLineWidth(0.6);
+                        pdf.rect(8, 8, 194, 281);
+
+                        // 内枠
+                        pdf.setLineWidth(0.2);
+                        pdf.rect(10, 10, 190, 277);
+
+                        // 四隅の装飾（ひし形）
+                        pdf.setFillColor(212, 168, 83);
+                        const drawDiamond = (x, y) => {
+                            pdf.lines([[2, -2], [2, 2], [-2, 2], [-2, -2]], x - 2, y + 2, [1, 1], 'F');
+                        };
+                        drawDiamond(10, 10);
+                        drawDiamond(200, 10);
+                        drawDiamond(10, 287);
+                        drawDiamond(200, 287);
+                    }
+                }).save();
+            } finally {
+                container.remove();
+            }
         } else {
+            container.remove();
             alert('PDF生成ライブラリが読み込まれていません。ページを再読み込みしてください。');
         }
     }
