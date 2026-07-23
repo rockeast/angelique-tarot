@@ -148,11 +148,19 @@
                 const response = await fetch('/api/prices');
                 if (!response.ok) throw new Error('price request failed');
                 const prices = await response.json();
-                const format = (price) => new Intl.NumberFormat('ja-JP', {
-                    style: 'currency',
-                    currency: price.currency.toUpperCase(),
-                    maximumFractionDigits: 0,
-                }).format(price.unitAmount / 100);
+                const format = (price) => {
+                    const currency = price.currency.toUpperCase();
+                    const options = new Intl.NumberFormat('ja-JP', {
+                        style: 'currency',
+                        currency,
+                    }).resolvedOptions();
+                    const divisor = 10 ** options.maximumFractionDigits;
+                    return new Intl.NumberFormat('ja-JP', {
+                        style: 'currency',
+                        currency,
+                        maximumFractionDigits: 0,
+                    }).format(price.unitAmount / divisor);
+                };
                 document.querySelector('[data-legal-price="monthly"]').textContent = `${format(prices.monthly)}（税込）`;
                 document.querySelector('[data-legal-price="yearly"]').textContent = `${format(prices.yearly)}（税込）`;
             } catch (error) {

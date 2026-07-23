@@ -1601,11 +1601,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function closePremiumModal() { if (premiumModalOverlay) premiumModalOverlay.classList.add('hidden'); }
 
     function formatStripePrice(price) {
+        const currency = price.currency.toUpperCase();
+        const currencyOptions = new Intl.NumberFormat('ja-JP', {
+            style: 'currency',
+            currency,
+        }).resolvedOptions();
+        const divisor = 10 ** currencyOptions.maximumFractionDigits;
         return new Intl.NumberFormat('ja-JP', {
             style: 'currency',
-            currency: price.currency.toUpperCase(),
+            currency,
             maximumFractionDigits: 0,
-        }).format(price.unitAmount / 100);
+        }).format(price.unitAmount / divisor);
     }
 
     async function loadStripePrices() {
