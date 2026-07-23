@@ -370,10 +370,12 @@ class AuthManager {
         this.mypageModal = document.getElementById('mypage-modal-overlay');
         this.mypageClose = document.getElementById('mypage-close');
         this.mypageLogoutBtn = document.getElementById('mypage-logout-btn');
+        this.billingBtn = document.getElementById('mypage-billing-btn');
         
         if (this.mypageClose) this.mypageClose.addEventListener('click', () => this.closeMyPage());
         if (this.mypageModal) this.mypageModal.addEventListener('click', (e) => { if (e.target === this.mypageModal) this.closeMyPage(); });
         if (this.mypageLogoutBtn) this.mypageLogoutBtn.addEventListener('click', () => this.logout());
+        if (this.billingBtn) this.billingBtn.addEventListener('click', () => this.openBillingPortal());
 
         // History Tabs
         const historyTabs = document.querySelectorAll('.history-tab');
@@ -437,6 +439,9 @@ class AuthManager {
         if (this.user.birthdate) accountLines.push(`生年月日: ${this.user.birthdate}`);
         document.getElementById('mypage-email').innerHTML = accountLines.map(escapeHTML).join('<br>');
         document.getElementById('mypage-plan-badge').textContent = this.user.isPremium ? 'Premium ✦' : 'Free';
+        if (this.billingBtn) {
+            this.billingBtn.classList.toggle('hidden', !this.user.isPremium);
+        }
         
         await this.loadHistory();
     }
@@ -885,6 +890,35 @@ class AuthManager {
         
         // ログアウト時に画面をリロードして状態をリセット
         window.location.reload();
+    }
+
+    async openBillingPortal() {
+        if (!this.token) {
+            this.openModal();
+            return;
+        }
+
+        if (this.billingBtn) {
+            this.billingBtn.disabled = true;
+            this.billingBtn.textContent = '準備中...';
+        }
+
+        try {
+            const res = await fetch('/api/create-portal-session', {
+                method: 'POST',
+                headers: this.getAuthHeaders()
+            });
+            const data = await res.json();
+            if (!res.ok || !data.url) throw new Error(data.error || 'プラン管理画面を開けませんでした。');
+            window.location.href = data.url;
+        } catch (error) {
+            alert(error.message || 'プラン管理画面を開けませんでした。');
+        } finally {
+            if (this.billingBtn) {
+                this.billingBtn.disabled = false;
+                this.billingBtn.textContent = 'プラン管理・解約';
+            }
+        }
     }
 
     getAuthHeaders() {
@@ -1565,6 +1599,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openPremiumModal() { if (premiumModalOverlay) premiumModalOverlay.classList.remove('hidden'); }
     function closePremiumModal() { if (premiumModalOverlay) premiumModalOverlay.classList.add('hidden'); }
+
+    function formatStripePrice(price) {
+        return new Intl.NumberFormat('ja-JP', {
+            style: 'currency',
+            currency: price.currency.toUpperCase(),
+            maximumFractionDigits: 0,
+        }).format(price.unitAmount / 100);
+    }
+
+    async function loadStripePrices() {
+        const response = await fetch('/api/prices');
+        if (!response.ok) throw new Error('price request failed');
+
+        const prices = await response.json();
+        for (const plan of ['monthly', 'yearly']) {
+            const price = prices[plan];
+            const amountEl = document.querySelector(`[data-price-amount="${plan}"]`);
+            if (amountEl) {
+                const period = price.interval === 'year' ? '年' : '月';
+                amountEl.innerHTML = `${formatStripePrice(price)}<small>/${period}</small>`;
+            }
+        }
+
+        const yearly = prices.yearly;
+        const monthlyEquivalent = yearly.unitAmount / (12 * (yearly.intervalCount || 1));
+        const perMonthEl = document.querySelector('[data-price-per-month="yearly"]');
+        if (perMonthEl) {
+            perMonthEl.textContent = `月あたり ${formatStripePrice({ ...yearly, unitAmount: Math.round(monthlyEquivalent) })}`;
+        }
+
+        if (modalCtaBtn) modalCtaBtn.disabled = false;
+    }
+
+    if (modalCtaBtn) modalCtaBtn.disabled = true;
+    loadStripePrices().catch((error) => {
+        console.error('Stripe price display error:', error);
+        const comingSoon = document.getElementById('modal-coming-soon');
+        if (comingSoon) comingSoon.textContent = '料金情報を取得できないため、決済を開始できません。';
+    });
 
     if (modalClose) modalClose.addEventListener('click', closePremiumModal);
     if (premiumModalOverlay) premiumModalOverlay.addEventListener('click', (e) => { if (e.target === premiumModalOverlay) closePremiumModal(); });

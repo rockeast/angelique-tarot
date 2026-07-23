@@ -109,7 +109,7 @@
             </tr>
             <tr>
                 <th>販売価格</th>
-                <td>月額プラン: 480円（税込） / 年間プラン: 3,980円（税込）</td>
+                <td>月額プラン: <span data-legal-price="monthly">—</span> / 年間プラン: <span data-legal-price="yearly">—</span></td>
             </tr>
             <tr>
                 <th>商品代金以外の必要料金</th>
@@ -129,7 +129,7 @@
             </tr>
             <tr>
                 <th>解約方法</th>
-                <td>Stripeカスタマーポータルまたはお問い合わせメールより、いつでも解約申請が可能です。</td>
+                <td>ログイン後、マイページの「プラン管理・解約」からStripeカスタマーポータルに移動し、解約手続きを行えます。</td>
             </tr>
             <tr>
                 <th>返品・キャンセル</th>
@@ -142,5 +142,23 @@
         </table>
         <a href="/" class="back-link">Angelique Tarot トップページへ戻る</a>
     </div>
+    <script>
+        (async () => {
+            try {
+                const response = await fetch('/api/prices');
+                if (!response.ok) throw new Error('price request failed');
+                const prices = await response.json();
+                const format = (price) => new Intl.NumberFormat('ja-JP', {
+                    style: 'currency',
+                    currency: price.currency.toUpperCase(),
+                    maximumFractionDigits: 0,
+                }).format(price.unitAmount / 100);
+                document.querySelector('[data-legal-price="monthly"]').textContent = `${format(prices.monthly)}（税込）`;
+                document.querySelector('[data-legal-price="yearly"]').textContent = `${format(prices.yearly)}（税込）`;
+            } catch (error) {
+                console.error(error);
+            }
+        })();
+    </script>
 </body>
 </html>

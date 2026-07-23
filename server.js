@@ -821,6 +821,28 @@ ${promptContext}
 /* ============================================================
    💳 Stripe決済 API (本番想定)
    ============================================================ */
+app.get('/api/prices', async (req, res) => {
+    try {
+        const [monthlyPrice, yearlyPrice] = await Promise.all([
+            stripe.prices.retrieve(process.env.STRIPE_PRICE_MONTHLY),
+            stripe.prices.retrieve(process.env.STRIPE_PRICE_YEARLY),
+        ]);
+
+        const serializePrice = (price) => ({
+            unitAmount: price.unit_amount,
+            currency: price.currency,
+            interval: price.recurring?.interval || null,
+            intervalCount: price.recurring?.interval_count || 1,
+        });
+
+        res.set('Cache-Control', 'public, max-age=300');
+        res.json({ monthly: serializePrice(monthlyPrice), yearly: serializePrice(yearlyPrice) });
+    } catch (error) {
+        console.error('Stripe prices error:', error.message);
+        res.status(503).json({ error: '料金情報を取得できませんでした。' });
+    }
+});
+
 app.post('/api/create-checkout-session', authenticate, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'ログインが必要です。' });
     

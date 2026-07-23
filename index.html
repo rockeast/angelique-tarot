@@ -273,13 +273,13 @@
                 <div class="modal-pricing">
                     <div class="price-card price-card-monthly" data-plan="monthly">
                         <span class="price-label">月額プラン</span>
-                        <span class="price-amount">¥480<small>/月</small></span>
+                        <span class="price-amount" data-price-amount="monthly">¥—<small>/月</small></span>
                     </div>
                     <div class="price-card price-card-yearly popular selected" data-plan="yearly">
                         <span class="popular-badge">2ヶ月分お得</span>
                         <span class="price-label">年間プラン</span>
-                        <span class="price-amount">¥3,980<small>/年</small></span>
-                        <span class="price-per-month">月あたり ¥332</span>
+                        <span class="price-amount" data-price-amount="yearly">¥—<small>/年</small></span>
+                        <span class="price-per-month" data-price-per-month="yearly">月あたり —</span>
                     </div>
                 </div>
 
@@ -360,6 +360,10 @@
                         <!-- 履歴アイテムがここに動的に追加される -->
                     </div>
                 </div>
+
+                <button class="mypage-billing-btn hidden" id="mypage-billing-btn">
+                    プラン管理・解約
+                </button>
 
                 <button class="mypage-logout-btn" id="mypage-logout-btn">
                     ログアウト
