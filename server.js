@@ -156,6 +156,39 @@ app.use(express.json());
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Only expose files required by the browser. Server code, SQL, and maintenance
+// scripts must never be downloadable from the public web root.
+const publicRootFiles = new Set([
+    'index.html',
+    'commerce.html',
+    'contact.html',
+    'terms.html',
+    'privacy.html',
+    '404.html',
+    'script.js',
+    'style.css',
+    'テスト動画.mp4',
+]);
+
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+
+    let pathname;
+    try {
+        pathname = decodeURIComponent(req.path);
+    } catch {
+        return res.status(400).send('Bad request');
+    }
+
+    const rootFile = pathname.replace(/^\/+/, '');
+    if (pathname === '/' || publicRootFiles.has(rootFile) || rootFile.startsWith('assets/')) {
+        return next();
+    }
+
+    return res.status(404).send('Not found');
+});
+
 app.use(express.static(path.join(__dirname)));
 
 /* ============================================================
