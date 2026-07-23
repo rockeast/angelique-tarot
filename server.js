@@ -14,7 +14,9 @@ import nodemailer from 'nodemailer';
 dotenv.config();
 
 const app = express();
-app.set('trust proxy', true);
+// Render sits behind one reverse proxy. Trusting an unrestricted proxy chain
+// would let clients spoof their IP and bypass the API rate limiter.
+app.set('trust proxy', 1);
 const port = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -228,7 +230,7 @@ const PREMIUM_MAX_TOKENS = 1024;   // プレミアムユーザーのレスポン
    🛡️ 認証ミドルウェア＆ヘルパー
    ============================================================ */
 function getClientIP(req) {
-    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress || req.ip || 'unknown';
+    return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
 /* ========================================
