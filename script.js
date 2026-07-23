@@ -1244,8 +1244,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // プレミアムモーダルを開くヘルパー（後続の関数を参照）
     const triggerPremium = () => {
-        const overlay = document.getElementById('premium-modal-overlay');
-        if (overlay) overlay.classList.remove('hidden');
+        openPremiumModal();
+    };
+
+    const spotlightLockedOption = (button) => {
+        button.classList.remove('locked-pulse');
+        void button.offsetWidth;
+        button.classList.add('locked-pulse');
+        setTimeout(() => button.classList.remove('locked-pulse'), 650);
     };
 
     // 設定UIイベントリスナー
@@ -1260,6 +1266,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             if (requiredPremium && (!fm.usage || !fm.usage.isPremium)) {
+                spotlightLockedOption(btn);
                 triggerPremium();
                 return;
             }
@@ -1278,6 +1285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', () => {
                 const angelValue = btn.dataset.value;
                 if (angelValue !== 'default' && (!fm.usage || !fm.usage.isPremium)) {
+                    spotlightLockedOption(btn);
                     triggerPremium();
                     return;
                 }
@@ -1674,6 +1682,9 @@ document.addEventListener('DOMContentLoaded', () => {
         card.addEventListener('click', () => {
             priceCards.forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
+            card.classList.remove('plan-picked');
+            void card.offsetWidth;
+            card.classList.add('plan-picked');
             selectedPlan = card.dataset.plan;
         });
     });
