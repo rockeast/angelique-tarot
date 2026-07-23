@@ -314,6 +314,7 @@ class AuthManager {
         this.passwordInput = document.getElementById('auth-password');
         this.errorMsg = document.getElementById('auth-error');
         this.title = document.getElementById('auth-title');
+        this.subtitle = document.getElementById('auth-subtitle');
         this.submitBtn = document.getElementById('auth-submit-btn');
         this.switchBtn = document.getElementById('auth-switch-btn');
         this.switchText = document.getElementById('auth-switch-text');
@@ -344,7 +345,7 @@ class AuthManager {
         if (this.headerBtn) {
             this.headerBtn.addEventListener('click', () => {
                 if (this.token) this.openMyPage();
-                else this.openModal();
+                else this.openModal('login');
             });
         }
 
@@ -393,7 +394,7 @@ class AuthManager {
         if (this.token) {
             this.headerBtn.innerHTML = '<img src="assets/icon-user.png" class="icon-tiny" onerror="this.style.visibility=\'hidden\'"> マイページ';
         } else {
-            this.headerBtn.textContent = 'ログイン';
+            this.headerBtn.textContent = 'ログイン・登録';
         }
     }
 
@@ -401,6 +402,7 @@ class AuthManager {
         this.errorMsg.classList.add('hidden');
         if (this.isLoginMode) {
             this.title.textContent = 'ログイン';
+            if (this.subtitle) this.subtitle.textContent = 'ログインして鑑定履歴やPremiumを管理';
             this.submitBtn.textContent = 'ログイン';
             this.switchText.textContent = 'アカウントをお持ちでないですか？';
             this.switchBtn.textContent = '新規登録';
@@ -408,6 +410,7 @@ class AuthManager {
             if (this.birthdateGroup) this.birthdateGroup.classList.add('hidden');
         } else {
             this.title.textContent = '新規登録';
+            if (this.subtitle) this.subtitle.textContent = '無料登録後、そのままPremium購入へ進めます';
             this.submitBtn.textContent = '登録して始める';
             this.switchText.textContent = 'すでにアカウントをお持ちですか？';
             this.switchBtn.textContent = 'ログイン';
@@ -416,8 +419,8 @@ class AuthManager {
         }
     }
 
-    openModal() {
-        this.isLoginMode = true;
+    openModal(mode = 'login') {
+        this.isLoginMode = mode !== 'register';
         this.updateFormUI();
         this.emailInput.value = '';
         this.passwordInput.value = '';
@@ -1604,7 +1607,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const limitAdBtn = document.getElementById('limit-ad-btn');
     const modalCtaBtn = document.getElementById('modal-cta-btn');
 
-    function openPremiumModal() { if (premiumModalOverlay) premiumModalOverlay.classList.remove('hidden'); }
+    function openPremiumModal() {
+        if (modalCtaBtn) {
+            modalCtaBtn.textContent = localStorage.getItem('angel_token')
+                ? '✦ プレミアムプランを購入する ✦'
+                : '✦ 無料登録して購入する ✦';
+        }
+        if (premiumModalOverlay) premiumModalOverlay.classList.remove('hidden');
+    }
     function closePremiumModal() { if (premiumModalOverlay) premiumModalOverlay.classList.add('hidden'); }
 
     function formatStripePrice(price) {
@@ -1673,7 +1683,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!authManager.token) {
             pendingCheckoutPlan = plan;
             closePremiumModal();
-            authManager.openModal();
+            authManager.openModal('register');
             return;
         }
 
