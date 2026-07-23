@@ -329,6 +329,7 @@ class AuthManager {
         this.isLoginMode = true;
 
         this.init();
+        this.validateSession();
     }
 
     parseJwt(token) {
@@ -433,6 +434,30 @@ class AuthManager {
         this.modal.classList.add('hidden');
     }
 
+    clearSession() {
+        localStorage.removeItem('angel_token');
+        localStorage.removeItem('angel_user');
+        this.token = null;
+        this.user = null;
+        this.updateHeaderBtn();
+        this.closeMyPage();
+    }
+
+    async validateSession() {
+        if (!this.token) return;
+
+        try {
+            const res = await fetch('/api/me', { headers: this.getAuthHeaders() });
+            if (!res.ok) throw new Error('session expired');
+            const data = await res.json();
+            this.user = data.user;
+            localStorage.setItem('angel_user', JSON.stringify(this.user));
+            if (this.onAuthChange) await this.onAuthChange();
+        } catch (error) {
+            this.clearSession();
+        }
+    }
+
     async openMyPage() {
         if (!this.mypageModal) return;
         this.mypageModal.classList.remove('hidden');
@@ -459,6 +484,11 @@ class AuthManager {
         try {
             const res = await fetch('/api/history', { headers: this.getAuthHeaders() });
             const data = await res.json();
+            if (res.status === 401) {
+                this.clearSession();
+                this.openModal('login');
+                return;
+            }
             if (!res.ok) throw new Error(data.error || '履歴の取得に失敗しました。');
                 
             // フィルタリング
@@ -883,12 +913,7 @@ class AuthManager {
     }
 
     logout() {
-        localStorage.removeItem('angel_token');
-        localStorage.removeItem('angel_user');
-        this.token = null;
-        this.user = null;
-        this.updateHeaderBtn();
-        this.closeMyPage();
+        this.clearSession();
         if (this.onAuthChange) this.onAuthChange();
         
         // ログアウト時に画面をリロードして状態をリセット
@@ -912,6 +937,11 @@ class AuthManager {
                 headers: this.getAuthHeaders()
             });
             const data = await res.json();
+            if (res.status === 401) {
+                this.clearSession();
+                this.openModal('login');
+                return;
+            }
             if (!res.ok || !data.url) throw new Error(data.error || 'プラン管理画面を開けませんでした。');
             window.location.href = data.url;
         } catch (error) {

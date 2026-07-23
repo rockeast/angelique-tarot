@@ -343,6 +343,13 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+app.get('/api/me', authenticate, (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'ログインが必要です。' });
+    }
+    res.json({ user: req.user });
+});
+
 /* ============================================================
    📊 利用状況管理
    ============================================================ */
