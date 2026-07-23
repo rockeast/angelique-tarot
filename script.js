@@ -1084,6 +1084,75 @@ class ShareManager {
    Main
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
+    // Contact Modal Logic
+    const openContactModal = document.getElementById('open-contact-modal');
+    const contactModalOverlay = document.getElementById('contact-modal-overlay');
+    const contactModalClose = document.getElementById('contact-modal-close');
+    const contactForm = document.getElementById('contact-form');
+    const contactError = document.getElementById('contact-error');
+    const contactSuccess = document.getElementById('contact-success');
+    const contactSubmitBtn = document.getElementById('contact-submit-btn');
+
+    if (openContactModal && contactModalOverlay) {
+        openContactModal.addEventListener('click', (e) => {
+            e.preventDefault();
+            contactModalOverlay.classList.remove('hidden');
+            contactError.classList.add('hidden');
+            contactSuccess.classList.add('hidden');
+            if (contactForm) contactForm.reset();
+        });
+    }
+
+    if (contactModalClose && contactModalOverlay) {
+        contactModalClose.addEventListener('click', () => {
+            contactModalOverlay.classList.add('hidden');
+        });
+        contactModalOverlay.addEventListener('click', (e) => {
+            if (e.target === contactModalOverlay) contactModalOverlay.classList.add('hidden');
+        });
+    }
+
+    if (contactForm) {
+        contactForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            contactError.classList.add('hidden');
+            contactSuccess.classList.add('hidden');
+            
+            const name = document.getElementById('contact-name').value;
+            const email = document.getElementById('contact-email').value;
+            const message = document.getElementById('contact-message').value;
+
+            const originalBtnText = contactSubmitBtn.innerHTML;
+            contactSubmitBtn.disabled = true;
+            contactSubmitBtn.innerHTML = '送信中...';
+
+            try {
+                const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, message })
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '送信に失敗しました。');
+
+                contactForm.reset();
+                contactSuccess.textContent = 'お問い合わせを送信しました。';
+                contactSuccess.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    contactModalOverlay.classList.add('hidden');
+                }, 3000);
+            } catch (error) {
+                contactError.textContent = error.message;
+                contactError.classList.remove('hidden');
+            } finally {
+                contactSubmitBtn.disabled = false;
+                contactSubmitBtn.innerHTML = originalBtnText;
+            }
+        });
+    }
+
     // 幻想エフェクト初期化
     const particleCanvas = document.getElementById('particle-canvas');
     const particleSystem = particleCanvas ? new ParticleSystem(particleCanvas) : null;

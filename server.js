@@ -9,10 +9,12 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', true);
 const port = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -559,6 +561,32 @@ app.post('/api/contact', async (req, res) => {
     if (error) {
         console.error('Contact message save error:', error);
         return res.status(500).json({ error: '送信に失敗しました。時間をおいて再度お試しください。' });
+    }
+
+    // Gmail経由で自動転送
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        try {
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
+
+            await transporter.sendMail({
+                from: `"Angelique Tarot" <${process.env.EMAIL_USER}>`,
+                to: process.env.EMAIL_USER, // 運営自身に送る
+                subject: `【お問い合わせ】${trimmedName} 様より`,
+                text: `Angelique Tarot サイトから新しいお問い合わせがありました。\n\nお名前: ${trimmedName}\nメールアドレス: ${trimmedEmail}\n\n【メッセージ内容】\n${trimmedMessage}\n\nIP: ${getClientIP(req)}`
+            });
+            console.log('Contact email sent successfully.');
+        } catch (mailError) {
+            console.error('Error sending contact email:', mailError);
+            // メール送信に失敗しても、DB保存が成功していればユーザーにはエラーを返さない
+        }
+    } else {
+        console.warn('EMAIL_USER or EMAIL_PASS not set in .env. Skipping email notification.');
     }
 
     res.json({ success: true });

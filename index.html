@@ -215,7 +215,7 @@
                 <a href="terms.html" class="footer-link">利用規約</a>
                 <a href="privacy.html" class="footer-link">プライバシーポリシー</a>
                 <a href="commerce.html" class="footer-link">特定商取引法に基づく表記</a>
-                <a href="mailto:angeliquetarot.jp@gmail.com?subject=【Angelique Tarot】お問い合わせ" class="footer-link">お問い合わせ</a>
+                <a href="#" id="open-contact-modal" class="footer-link">お問い合わせ</a>
             </div>
             <p class="footer-copy">&copy; 2026 Angelique Tarot. All rights reserved.</p>
         </footer>
@@ -425,6 +425,40 @@
                     <span id="auth-switch-text">アカウントをお持ちでないですか？</span>
                     <a href="#" id="auth-switch-btn">新規登録</a>
                 </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== お問い合わせモーダル ========== -->
+    <div class="modal-overlay hidden" id="contact-modal-overlay">
+        <div class="premium-modal auth-modal" id="contact-modal">
+            <button class="modal-close" id="contact-modal-close">✕</button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-icon">✉️</div>
+                    <h2 class="modal-title">お問い合わせ</h2>
+                    <p class="modal-subtitle">ご質問・ご要望などお気軽にどうぞ</p>
+                </div>
+
+                <form id="contact-form" class="auth-form">
+                    <div class="input-group">
+                        <label>お名前</label>
+                        <input type="text" id="contact-name" required placeholder="天使 太郎">
+                    </div>
+                    <div class="input-group">
+                        <label>メールアドレス</label>
+                        <input type="email" id="contact-email" required placeholder="angel@example.com">
+                    </div>
+                    <div class="input-group">
+                        <label>お問い合わせ内容</label>
+                        <textarea id="contact-message" required placeholder="こちらにメッセージをご入力ください" rows="5" class="setting-textarea" style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(212, 168, 83, 0.4); color: #fff; padding: 12px; border-radius: 8px; font-size: 0.95rem; resize: vertical;"></textarea>
+                    </div>
+                    <div class="auth-error hidden" id="contact-error"></div>
+                    <div class="auth-success hidden" id="contact-success" style="color: #4CAF50; font-size: 0.9rem; text-align: center; margin-bottom: 12px;"></div>
+                    <button type="submit" class="modal-cta-btn auth-submit-btn" id="contact-submit-btn">
+                        送信する
+                    </button>
+                </form>
             </div>
         </div>
     </div>
