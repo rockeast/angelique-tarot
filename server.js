@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import Groq from 'groq-sdk';
 import path from 'path';
 import fs from 'fs';
+import { randomUUID } from 'crypto';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
@@ -243,6 +244,28 @@ function getClientIP(req) {
     return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
+const VISITOR_COOKIE = 'angel_visitor_id';
+const VISITOR_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function getCookie(req, name) {
+    const cookies = req.headers.cookie?.split(';') || [];
+    const entry = cookies.find((cookie) => cookie.trim().startsWith(`${name}=`));
+    return entry ? decodeURIComponent(entry.trim().slice(name.length + 1)) : null;
+}
+
+function getAnonymousUsageKey(req, res) {
+    let visitorId = getCookie(req, VISITOR_COOKIE);
+    if (!visitorId || !/^[0-9a-f-]{36}$/i.test(visitorId)) {
+        visitorId = randomUUID();
+        const secure = isProduction ? '; Secure' : '';
+        res.setHeader(
+            'Set-Cookie',
+            `${VISITOR_COOKIE}=${encodeURIComponent(visitorId)}; Path=/; Max-Age=${VISITOR_COOKIE_MAX_AGE}; HttpOnly; SameSite=Lax${secure}`
+        );
+    }
+    return `visitor:${visitorId}`;
+}
+
 /* ========================================
    認証ミドルウェア (Supabase Auth)
    ======================================== */
@@ -371,9 +394,9 @@ function getTodayKey() {
     return jst.toISOString().split('T')[0];
 }
 
-async function getUserUsage(req) {
+async function getUserUsage(req, res) {
     const today = getTodayKey();
-    const userKey = req.user ? req.user.id : getClientIP(req);
+    let userKey = req.user ? req.user.id : getAnonymousUsageKey(req, res);
     
     let { data: usageData, error } = await supabase
         .from('daily_usage')
@@ -384,6 +407,26 @@ async function getUserUsage(req) {
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is 'no rows found'
         throw new Error(`Error fetching usage: ${error.message}`);
+    }
+
+    // Keep existing anonymous usage rows created before the visitor cookie was added.
+    // This prevents a deployment from accidentally granting an extra free reading.
+    if (!usageData && !req.user) {
+        const legacyKey = getClientIP(req);
+        if (legacyKey !== userKey) {
+            const { data: legacyUsage, error: legacyError } = await supabase
+                .from('daily_usage')
+                .select('*')
+                .eq('user_id', legacyKey)
+                .eq('usage_date', today)
+                .maybeSingle();
+
+            if (legacyError) throw new Error(`Error fetching legacy usage: ${legacyError.message}`);
+            if (legacyUsage) {
+                userKey = legacyKey;
+                usageData = legacyUsage;
+            }
+        }
     }
 
     if (!usageData) {
@@ -449,6 +492,35 @@ async function updateUsageCount(userKey, incrementCount, setShared, incrementAdB
     return updated || { count: updateData.count || 0, shared: updateData.shared || false, ad_bonus: updateData.ad_bonus || 0 };
 }
 
+// Increment only when the value read before generation is still current.
+// This makes concurrent requests consume at most one free slot.
+async function claimUsageCount(userKey, expectedCount) {
+    const today = getTodayKey();
+    const { data, error } = await supabase
+        .from('daily_usage')
+        .update({ count: expectedCount + 1, updated_at: new Date().toISOString() })
+        .eq('user_id', userKey)
+        .eq('usage_date', today)
+        .eq('count', expectedCount)
+        .select()
+        .maybeSingle();
+
+    if (error) throw new Error(`Error claiming usage: ${error.message}`);
+    return data || null;
+}
+
+async function releaseUsageCount(userKey, claimedCount) {
+    const today = getTodayKey();
+    const { error } = await supabase
+        .from('daily_usage')
+        .update({ count: claimedCount - 1, updated_at: new Date().toISOString() })
+        .eq('user_id', userKey)
+        .eq('usage_date', today)
+        .eq('count', claimedCount);
+
+    if (error) console.error('Error releasing reserved usage:', error.message);
+}
+
 async function saveReading(identifier, cardName, position, reading, isFull) {
     const { data, error } = await supabase
         .from('readings')
@@ -473,7 +545,7 @@ async function saveReading(identifier, cardName, position, reading, isFull) {
    ============================================================ */
 app.get('/api/usage', authenticate, async (req, res) => {
     try {
-        const { usageData } = await getUserUsage(req);
+        const { usageData } = await getUserUsage(req, res);
         const adBonus = usageData.ad_bonus || 0;
         const limit = usageData.isPremium ? Infinity : (FREE_DAILY_LIMIT + (usageData.shared ? SHARE_BONUS : 0) + adBonus);
         res.json({
@@ -494,7 +566,7 @@ app.get('/api/usage', authenticate, async (req, res) => {
 
 app.post('/api/shared', authenticate, async (req, res) => {
     try {
-        const { userKey } = await getUserUsage(req);
+        const { userKey } = await getUserUsage(req, res);
         const updated = await updateUsageCount(userKey, false, true, false);
         const limit = FREE_DAILY_LIMIT + SHARE_BONUS + (updated.ad_bonus || 0);
         res.json({ success: true, remaining: Math.max(0, limit - updated.count) });
@@ -510,7 +582,7 @@ app.post('/api/reward-ad', authenticate, async (req, res) => {
     }
 
     try {
-        const { userKey, usageData } = await getUserUsage(req);
+        const { userKey, usageData } = await getUserUsage(req, res);
         const currentAdBonus = usageData.ad_bonus || 0;
         
         if (currentAdBonus >= AD_BONUS_LIMIT) {
@@ -680,11 +752,12 @@ app.post('/api/contact', async (req, res) => {
    🔮 API: 占い生成（フリーミアム・認証対応）
    ============================================================ */
 app.post('/api/read-tarot', authenticate, async (req, res) => {
+    let usageReservation = null;
     try {
         const { cards, theme, spread, worry, targetPerson, angelPersona } = req.body;
         if (!cards || cards.length === 0) return res.status(400).json({ error: 'カード情報が不足しています' });
 
-        const { userKey, usageData } = await getUserUsage(req);
+        const { userKey, usageData } = await getUserUsage(req, res);
         const adBonus = usageData.ad_bonus || 0;
         const dailyLimit = usageData.isPremium ? Infinity : (FREE_DAILY_LIMIT + (usageData.shared ? SHARE_BONUS : 0) + adBonus);
 
@@ -693,6 +766,19 @@ app.post('/api/read-tarot', authenticate, async (req, res) => {
         }
 
         const isFull = usageData.isPremium;
+
+        if (!isFull) {
+            const claimedUsage = await claimUsageCount(userKey, usageData.count);
+            if (!claimedUsage) {
+                return res.status(429).json({
+                    error: 'daily_limit',
+                    message: '制限に達しました。',
+                    shared: usageData.shared,
+                    ad_bonus: adBonus
+                });
+            }
+            usageReservation = { userKey, claimedCount: claimedUsage.count };
+        }
         
         let promptContext = '';
         if (req.user && req.user.birthdate) {
@@ -791,23 +877,29 @@ ${promptContext}
         if (spread === 5) maxTokens = 2000;
         if (spread === 7) maxTokens = 2500;
 
-        const completion = await groq.chat.completions.create({
-            messages: [
-                { role: 'system', content: systemContent },
-                { role: 'user', content: prompt }
-            ],
-            model: 'llama-3.3-70b-versatile',
-            temperature: 0.85,
-            max_tokens: maxTokens,
-        });
+        let completion;
+        try {
+            completion = await groq.chat.completions.create({
+                messages: [
+                    { role: 'system', content: systemContent },
+                    { role: 'user', content: prompt }
+                ],
+                model: 'llama-3.3-70b-versatile',
+                temperature: 0.85,
+                max_tokens: maxTokens,
+            });
+        } catch (error) {
+            if (usageReservation) {
+                await releaseUsageCount(usageReservation.userKey, usageReservation.claimedCount);
+                usageReservation = null;
+            }
+            throw error;
+        }
 
         const reading = completion.choices[0]?.message?.content || 'メッセージを受信できませんでした。';
-        let updatedUsage = await updateUsageCount(userKey, true, false, false);
-        
-        // Supabase通信エラー等で取得できなかった場合のフォールバック
-        if (!updatedUsage) {
-            updatedUsage = { ...usageData, count: usageData.count + 1 };
-        }
+        const updatedUsage = usageReservation
+            ? { ...usageData, count: usageReservation.claimedCount }
+            : usageData;
         
         // 履歴保存 (代表して1枚目を保存するか、カード名を結合)
         let historyCardName = cards[0].cardName;
