@@ -757,13 +757,14 @@ class AuthManager {
         container.style.boxSizing = 'border-box';
         container.style.padding = '10mm 12mm';
         container.style.margin = '0';
-        // html2canvasは画面外の要素を空白として処理することがあるため、
-        // 一時的にビューポート内へ配置する。z-indexを下げて操作は妨げない。
+        // html2canvasは画面外や負のz-indexの要素を空白として処理することがあるため、
+        // 一時的にビューポート内の最前面へ配置する。
         container.style.position = 'fixed';
         container.style.left = '0';
         container.style.top = '0';
-        container.style.zIndex = '-1';
+        container.style.zIndex = '2147483647';
         container.style.pointerEvents = 'none';
+        container.style.visibility = 'visible';
         container.style.overflowWrap = 'anywhere';
         container.style.wordBreak = 'break-word';
         
@@ -840,6 +841,14 @@ class AuthManager {
         `;
 
         document.body.appendChild(container);
+        const hiddenNodes = Array.from(document.body.children)
+            .filter((node) => node !== container)
+            .map((node) => ({ node, visibility: node.style.visibility }));
+        hiddenNodes.forEach(({ node }) => { node.style.visibility = 'hidden'; });
+        const cleanup = () => {
+            hiddenNodes.forEach(({ node, visibility }) => { node.style.visibility = visibility; });
+            container.remove();
+        };
         await (document.fonts?.ready || Promise.resolve());
         await Promise.all(Array.from(container.querySelectorAll('img')).map((image) => {
             if (image.complete) return Promise.resolve();
@@ -862,12 +871,15 @@ class AuthManager {
                 backgroundColor: '#fdfbf7',
                 scrollX: 0,
                 scrollY: 0,
+                windowWidth: Math.max(document.documentElement.clientWidth, container.scrollWidth),
+                windowHeight: Math.max(document.documentElement.clientHeight, container.scrollHeight),
                 onclone: (clonedDocument) => {
                     const clonedContainer = clonedDocument.querySelector('[data-pdf-export="true"]');
                     if (clonedContainer) {
                         clonedContainer.style.left = '0';
                         clonedContainer.style.top = '0';
-                        clonedContainer.style.zIndex = '0';
+                        clonedContainer.style.zIndex = '1';
+                        clonedContainer.style.visibility = 'visible';
                     }
                 }
             },
@@ -905,10 +917,10 @@ class AuthManager {
                     }
                 }).save();
             } finally {
-                container.remove();
+                cleanup();
             }
         } else {
-            container.remove();
+            cleanup();
             alert('PDF生成ライブラリが読み込まれていません。ページを再読み込みしてください。');
         }
     }
