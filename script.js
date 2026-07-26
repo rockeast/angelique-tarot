@@ -1292,6 +1292,22 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedTheme = '総合';
     let selectedAngel = 'default';
 
+    const angelColors = {
+        default: { color: '#D4A853', rgb: '212, 168, 83' },
+        michael: { color: '#1B4F9C', rgb: '27, 79, 156' },
+        raphael: { color: '#2E8B6F', rgb: '46, 139, 111' },
+        gabriel: { color: '#D4AF37', rgb: '212, 175, 55' },
+        uriel: { color: '#B5651D', rgb: '181, 101, 29' }
+    };
+
+    function applyAngelColor(angelValue = 'default') {
+        const color = angelColors[angelValue] || angelColors.default;
+        document.documentElement.style.setProperty('--angel-color', color.color);
+        document.documentElement.style.setProperty('--angel-color-rgb', color.rgb);
+    }
+
+    applyAngelColor();
+
     // 進行状態
     let drawnCards = [];
     let chosenCards = []; // 選ばれたカードの配列
@@ -1347,6 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 angelOptions.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 selectedAngel = angelValue;
+                applyAngelColor(selectedAngel);
                 
                 const descEl = document.getElementById('angel-description');
                 if (descEl) {
