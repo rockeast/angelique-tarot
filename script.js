@@ -739,8 +739,16 @@ class AuthManager {
     }
 
     async exportPDF(item, dateStr) {
+        const readingHTML = String(item?.reading || '').trim();
+        if (!readingHTML) {
+            alert('鑑定結果が見つからないため、PDFを作成できません。鑑定結果を表示してからお試しください。');
+            return;
+        }
+
+        const cardName = String(item?.cardName || '鑑定結果');
         // PDF用の一時的なコンテナを作成
         const container = document.createElement('div');
+        container.dataset.pdfExport = 'true';
         container.style.backgroundColor = '#fdfbf7'; // 幻想的なクリームホワイト
         container.style.color = '#333333';
         container.style.fontFamily = "'Noto Serif JP', serif";
@@ -749,9 +757,13 @@ class AuthManager {
         container.style.boxSizing = 'border-box';
         container.style.padding = '10mm 12mm';
         container.style.margin = '0';
-        container.style.position = 'absolute';
-        container.style.left = '-10000px';
+        // html2canvasは画面外の要素を空白として処理することがあるため、
+        // 一時的にビューポート内へ配置する。z-indexを下げて操作は妨げない。
+        container.style.position = 'fixed';
+        container.style.left = '0';
         container.style.top = '0';
+        container.style.zIndex = '-1';
+        container.style.pointerEvents = 'none';
         container.style.overflowWrap = 'anywhere';
         container.style.wordBreak = 'break-word';
         
@@ -809,7 +821,7 @@ class AuthManager {
                 <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-bottom: 20px; break-inside: avoid; page-break-inside: avoid;">
                     ${cardImagesHTML}
                 </div>
-                <p style="font-size: 15px; line-height: 1.6; font-weight: bold; color: #555; margin: 0;">${item.cardName.replace(/\n/g, '<br>')}</p>
+                <p style="font-size: 15px; line-height: 1.6; font-weight: bold; color: #555; margin: 0;">${escapeHTML(cardName).replace(/\n/g, '<br>')}</p>
             </div>
             
             ${decorativeDivider}
@@ -817,7 +829,7 @@ class AuthManager {
             <div style="margin-bottom: 40px; padding: 0 10px; break-inside: auto; page-break-inside: auto;">
                 <h2 style="font-size: 18px; color: #b38b3d; margin-top: 0; margin-bottom: 25px; text-align: center; letter-spacing: 1px;">✦ 天使からのメッセージ ✦</h2>
                 <div style="font-size: 14px; line-height: 2.0; text-align: left; color: #444; letter-spacing: 0.5px; overflow-wrap: anywhere; word-break: break-word; break-inside: auto; page-break-inside: auto;">
-                    ${item.reading}
+                    ${readingHTML}
                 </div>
             </div>
             
@@ -842,7 +854,23 @@ class AuthManager {
             margin:       [12, 12, 12, 12],
             filename:     `tarot_reading_${new Date(item.timestamp).getTime()}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#fdfbf7' },
+            html2canvas:  {
+                scale: 2,
+                useCORS: true,
+                allowTaint: false,
+                logging: false,
+                backgroundColor: '#fdfbf7',
+                scrollX: 0,
+                scrollY: 0,
+                onclone: (clonedDocument) => {
+                    const clonedContainer = clonedDocument.querySelector('[data-pdf-export="true"]');
+                    if (clonedContainer) {
+                        clonedContainer.style.left = '0';
+                        clonedContainer.style.top = '0';
+                        clonedContainer.style.zIndex = '0';
+                    }
+                }
+            },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'], avoid: ['.pdf-keep-together'] }
         };
