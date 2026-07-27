@@ -1391,31 +1391,69 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const angelOptions = document.querySelectorAll('#angel-options .setting-btn');
+    const angelDescription = document.getElementById('angel-description');
+    const angelDescriptionName = document.getElementById('angel-description-name');
+    const angelDescriptionText = document.getElementById('angel-description-text');
+    const angelPremiumCta = document.getElementById('angel-premium-cta');
+    const angelProfiles = {
+        default: {
+            name: 'おまかせ',
+            description: '4大天使の中から、今のあなたに必要な導きをお届けします。'
+        },
+        michael: {
+            name: '大天使ミカエル｜守護と勇気',
+            description: '恐れや迷いを断ち切り、決断して前へ進みたい時に。仕事や人生の転機を力強く支えます。'
+        },
+        raphael: {
+            name: '大天使ラファエル｜癒しと調和',
+            description: '傷ついた心や疲れをやさしく癒し、心身と人間関係のバランスを整えたい時に寄り添います。'
+        },
+        gabriel: {
+            name: '大天使ガブリエル｜直感と伝達',
+            description: '恋愛や対人関係、創造的な活動で、本当の気持ちを伝えるための直感とひらめきを届けます。'
+        },
+        uriel: {
+            name: '大天使ウリエル｜知恵と真実',
+            description: '複雑な状況を冷静に整理し、隠れている真実や現実的な解決策を見つけたい時に導きます。'
+        }
+    };
+
+    const showAngelDescription = (angelValue, showPremiumCta = false) => {
+        const profile = angelProfiles[angelValue] || angelProfiles.default;
+        if (angelDescriptionName) angelDescriptionName.textContent = profile.name;
+        if (angelDescriptionText) angelDescriptionText.textContent = profile.description;
+        if (angelPremiumCta) angelPremiumCta.hidden = !showPremiumCta;
+        if (angelDescription) {
+            angelDescription.classList.remove('is-updating');
+            void angelDescription.offsetWidth;
+            angelDescription.classList.add('is-updating');
+        }
+    };
+
+    if (angelPremiumCta) {
+        angelPremiumCta.addEventListener('click', triggerPremium);
+    }
+
     if (angelOptions.length > 0) {
         angelOptions.forEach(btn => {
             btn.addEventListener('click', () => {
                 const angelValue = btn.dataset.value;
-                if (angelValue !== 'default' && (!fm.usage || !fm.usage.isPremium)) {
+                const isPremiumLocked = angelValue !== 'default' && (!fm.usage || !fm.usage.isPremium);
+
+                applyAngelColor(angelValue);
+                showAngelDescription(angelValue, isPremiumLocked);
+                angelOptions.forEach(b => b.classList.remove('is-previewing'));
+
+                if (isPremiumLocked) {
+                    btn.classList.add('is-previewing');
                     spotlightLockedOption(btn);
-                    triggerPremium();
                     return;
                 }
+
                 angelOptions.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 selectedAngel = angelValue;
                 applyAngelColor(selectedAngel);
-                
-                const descEl = document.getElementById('angel-description');
-                if (descEl) {
-                    const descs = {
-                        'default': '各天使には得意なサポート分野があります。お悩みに合わせて指名してください。',
-                        'michael': '大天使ミカエル：勇気と行動を促す力強いアドバイス。恐れを断ち切り、前へ進みたい時に。',
-                        'raphael': '大天使ラファエル：癒しと心のケアを中心とした優しいアドバイス。傷ついた心を癒したい時に。',
-                        'gabriel': '大天使ガブリエル：直感と創造性、対人関係のコミュニケーションに関するインスピレーション。',
-                        'uriel': '大天使ウリエル：知恵と真実をもたらす論理的でクリアな解決策。現状を冷静に分析したい時に。'
-                    };
-                    descEl.textContent = descs[angelValue] || descs['default'];
-                }
             });
         });
     }
