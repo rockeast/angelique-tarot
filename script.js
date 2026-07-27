@@ -1333,17 +1333,18 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedAngel = 'default';
 
     const angelColors = {
-        default: { color: '#D4A853', rgb: '212, 168, 83' },
-        michael: { color: '#1B4F9C', rgb: '27, 79, 156' },
-        raphael: { color: '#2E8B6F', rgb: '46, 139, 111' },
-        gabriel: { color: '#D4AF37', rgb: '212, 175, 55' },
-        uriel: { color: '#B5651D', rgb: '181, 101, 29' }
+        default: { color: '#D4A853', rgb: '212, 168, 83', tintOpacity: '0' },
+        michael: { color: '#1B4F9C', rgb: '27, 79, 156', tintOpacity: '.62' },
+        raphael: { color: '#2E8B6F', rgb: '46, 139, 111', tintOpacity: '.62' },
+        gabriel: { color: '#D4AF37', rgb: '212, 175, 55', tintOpacity: '.58' },
+        uriel: { color: '#B5651D', rgb: '181, 101, 29', tintOpacity: '.62' }
     };
 
     function applyAngelColor(angelValue = 'default') {
         const color = angelColors[angelValue] || angelColors.default;
         document.documentElement.style.setProperty('--angel-color', color.color);
         document.documentElement.style.setProperty('--angel-color-rgb', color.rgb);
+        document.documentElement.style.setProperty('--angel-card-tint-opacity', color.tintOpacity);
     }
 
     applyAngelColor();
