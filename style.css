@@ -759,6 +759,43 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);
     justify-content: center;
 }
 
+#angel-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+}
+
+#angel-options > .setting-btn:first-child {
+    grid-column: 1 / -1;
+}
+
+#angel-options .angel-option {
+    min-width: 0;
+    padding: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 9px;
+    text-align: left;
+}
+
+.angel-option-image {
+    width: 76px;
+    height: 48px;
+    flex: 0 0 76px;
+    object-fit: cover;
+    object-position: center 36%;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, .2);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
+}
+
+.angel-option-label {
+    min-width: 0;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+}
+
 .setting-btn {
     background: rgba(12, 10, 26, 0.8);
     border: 1px solid rgba(184, 169, 232, 0.3);
@@ -1972,6 +2009,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);
     .modal-content { padding: 28px 20px 20px; }
     .modal-pricing { grid-template-columns: 1fr; }
     .limit-card { padding: 30px 20px; }
+    #angel-options { grid-template-columns: 1fr; }
+    #angel-options .angel-option-image { width: 84px; height: 52px; flex-basis: 84px; }
 }
 
 /* ========================================
