@@ -43,13 +43,15 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const cspDirectives = {
     defaultSrc: ["'self'"],
     baseUri: ["'self'"],
-    connectSrc: ["'self'"],
+    // AdSense uses changing HTTPS endpoints for ad requests and measurement.
+    // Google recommends avoiding a fixed domain allowlist for these resources.
+    connectSrc: ["'self'", 'https:'],
     fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
-    frameSrc: ["'self'", 'https://checkout.stripe.com'],
+    frameSrc: ["'self'", 'https:'],
     imgSrc: ["'self'", 'data:', 'https:'],
     mediaSrc: ["'self'"],
     objectSrc: ["'none'"],
-    scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com', "'unsafe-inline'"],
+    scriptSrc: ["'self'", 'https:', "'unsafe-inline'", "'unsafe-eval'"],
     styleSrc: ["'self'", 'https://fonts.googleapis.com', "'unsafe-inline'"],
 };
 
@@ -171,6 +173,7 @@ const publicRootFiles = new Set([
     'guide.html',
     'love-tarot.html',
     'partner-feelings-tarot.html',
+    'ads.txt',
     'robots.txt',
     'sitemap.xml',
     'terms.html',
