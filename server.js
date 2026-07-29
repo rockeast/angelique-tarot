@@ -962,8 +962,16 @@ app.get('/api/prices', async (req, res) => {
             intervalCount: price.recurring?.interval_count || 1,
         });
 
+        if (monthlyPrice.livemode !== yearlyPrice.livemode) {
+            throw new Error('Stripe price modes do not match.');
+        }
+
         res.set('Cache-Control', 'public, max-age=300');
-        res.json({ monthly: serializePrice(monthlyPrice), yearly: serializePrice(yearlyPrice) });
+        res.json({
+            livemode: monthlyPrice.livemode,
+            monthly: serializePrice(monthlyPrice),
+            yearly: serializePrice(yearlyPrice),
+        });
     } catch (error) {
         console.error('Stripe prices error:', error.message);
         res.status(503).json({ error: '料金情報を取得できませんでした。' });
