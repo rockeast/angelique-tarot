@@ -11,6 +11,11 @@ import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import nodemailer from 'nodemailer';
+import {
+    blocksNewSubscription,
+    getSubscriptionUserId,
+    hasPremiumAccess,
+} from './billing-utils.js';
 
 dotenv.config();
 
@@ -82,6 +87,43 @@ app.use(cors({
     origin: allowedOrigins.length > 0 ? allowedOrigins : false,
 }));
 
+async function updateBillingProfile(userId, values) {
+    const { error } = await supabase
+        .from('profiles')
+        .update(values)
+        .eq('id', userId)
+        .select('id')
+        .single();
+
+    if (error) throw new Error(`Billing profile update failed: ${error.message}`);
+}
+
+async function retrieveCurrentSubscription(subscriptionId, eventSubscription = null) {
+    try {
+        return await stripe.subscriptions.retrieve(subscriptionId);
+    } catch (error) {
+        // A deleted subscription normally remains retrievable. Use the signed
+        // event payload only if Stripe reports that the object no longer exists.
+        if (error?.code === 'resource_missing' && eventSubscription) return eventSubscription;
+        throw error;
+    }
+}
+
+async function syncSubscriptionProfile(subscription, fallbackUserId = null) {
+    const userId = getSubscriptionUserId(subscription) || fallbackUserId;
+    if (!userId) throw new Error(`Subscription ${subscription.id} has no userId metadata.`);
+
+    const customerId = typeof subscription.customer === 'string'
+        ? subscription.customer
+        : subscription.customer?.id;
+
+    await updateBillingProfile(userId, {
+        is_premium: hasPremiumAccess(subscription.status),
+        stripe_customer_id: customerId || null,
+        stripe_subscription_id: subscription.id,
+    });
+}
+
 /* ============================================================
    Webhook は raw body が必要なため express.json の前に定義
    ============================================================ */
@@ -97,61 +139,30 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        const userId = session.client_reference_id;
-        
-        if (userId) {
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    is_premium: true,
-                    stripe_customer_id: session.customer || null,
-                    stripe_subscription_id: session.subscription || null
-                })
-                .eq('id', userId);
-            
-            if (error) {
-                console.error('Error upgrading user to premium via webhook:', error);
-            } else {
-                console.log(`User ${userId} upgraded to Premium!`);
-            }
+    try {
+        if (event.type === 'checkout.session.completed') {
+            const session = event.data.object;
+            if (!session.subscription) throw new Error(`Checkout session ${session.id} has no subscription.`);
+
+            const subscriptionId = typeof session.subscription === 'string'
+                ? session.subscription
+                : session.subscription.id;
+            const subscription = await retrieveCurrentSubscription(subscriptionId);
+            await syncSubscriptionProfile(subscription, session.client_reference_id);
+        } else if (
+            event.type === 'customer.subscription.deleted'
+            || event.type === 'customer.subscription.updated'
+            || event.type === 'customer.subscription.created'
+        ) {
+            const eventSubscription = event.data.object;
+            const subscription = await retrieveCurrentSubscription(eventSubscription.id, eventSubscription);
+            await syncSubscriptionProfile(subscription);
         }
-    } else if (event.type === 'customer.subscription.deleted') {
-        const subscription = event.data.object;
-        const userId = subscription.metadata?.userId;
-
-        if (userId) {
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    is_premium: false,
-                    stripe_subscription_id: null
-                })
-                .eq('id', userId);
-
-            if (error) {
-                console.error('Error downgrading user after subscription cancellation:', error);
-            }
-        }
-    } else if (event.type === 'customer.subscription.updated') {
-        const subscription = event.data.object;
-        const userId = subscription.metadata?.userId;
-        const activeStatuses = new Set(['active', 'trialing']);
-
-        if (userId) {
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    is_premium: activeStatuses.has(subscription.status),
-                    stripe_subscription_id: subscription.id
-                })
-                .eq('id', userId);
-
-            if (error) {
-                console.error('Error syncing subscription status:', error);
-            }
-        }
+    } catch (error) {
+        // A non-2xx response makes Stripe retry live webhook delivery instead
+        // of silently leaving a paying customer without the correct access.
+        console.error(`Webhook processing failed for ${event.id}:`, error.message);
+        return res.status(500).json({ error: 'Webhook processing failed' });
     }
 
     res.json({ received: true });
@@ -299,7 +310,8 @@ const authenticate = async (req, res, next) => {
             email: user.email, 
             nickname: profile?.nickname,
             birthdate: profile?.birthdate,
-            isPremium: profile?.is_premium || false
+            isPremium: profile?.is_premium || false,
+            hasBillingAccount: Boolean(profile?.stripe_customer_id)
         };
         next();
     } catch (err) {
@@ -372,7 +384,8 @@ app.post('/api/login', async (req, res) => {
                 email: data.user.email,
                 nickname: profile?.nickname,
                 birthdate: profile?.birthdate,
-                isPremium: profile?.is_premium || false
+                isPremium: profile?.is_premium || false,
+                hasBillingAccount: Boolean(profile?.stripe_customer_id)
             }
         });
     } catch (e) {
@@ -957,6 +970,51 @@ app.get('/api/prices', async (req, res) => {
     }
 });
 
+async function findExistingSubscription(profile) {
+    if (profile.stripe_subscription_id) {
+        try {
+            const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+            if (blocksNewSubscription(subscription.status)) return subscription;
+        } catch (error) {
+            if (error?.code !== 'resource_missing') throw error;
+        }
+    }
+
+    if (!profile.stripe_customer_id) return null;
+
+    const subscriptions = await stripe.subscriptions.list({
+        customer: profile.stripe_customer_id,
+        status: 'all',
+        limit: 100,
+    });
+    return subscriptions.data.find((subscription) => blocksNewSubscription(subscription.status)) || null;
+}
+
+async function ensureStripeCustomer(profile, user) {
+    if (profile.stripe_customer_id) {
+        try {
+            const customer = await stripe.customers.retrieve(profile.stripe_customer_id);
+            if (!customer.deleted) return customer.id;
+        } catch (error) {
+            if (error?.code !== 'resource_missing') throw error;
+        }
+    }
+
+    const previousCustomerId = profile.stripe_customer_id || 'initial';
+    const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { userId: user.id },
+    }, {
+        // Concurrent checkout requests for the same account must reuse one
+        // customer. A deleted customer ID changes the key for safe recreation.
+        idempotencyKey: `billing_customer_${user.id}_${previousCustomerId}`,
+    });
+
+    await updateBillingProfile(user.id, { stripe_customer_id: customer.id });
+    profile.stripe_customer_id = customer.id;
+    return customer.id;
+}
+
 app.post('/api/create-checkout-session', authenticate, async (req, res) => {
     if (!req.user) return res.status(401).json({ error: 'ログインが必要です。' });
     
@@ -970,7 +1028,28 @@ app.post('/api/create-checkout-session', authenticate, async (req, res) => {
         : process.env.STRIPE_PRICE_MONTHLY;
 
     try {
-        const session = await stripe.checkout.sessions.create({
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('stripe_customer_id, stripe_subscription_id')
+            .eq('id', req.user.id)
+            .single();
+
+        if (profileError || !profile) {
+            console.error('Checkout profile lookup failed:', profileError?.message);
+            return res.status(503).json({ error: '契約状況を確認できませんでした。時間をおいてお試しください。' });
+        }
+
+        const customerId = await ensureStripeCustomer(profile, req.user);
+        const existingSubscription = await findExistingSubscription(profile);
+        if (existingSubscription) {
+            await syncSubscriptionProfile(existingSubscription, req.user.id);
+            return res.status(409).json({
+                code: 'SUBSCRIPTION_EXISTS',
+                error: 'すでにサブスクリプションがあります。マイページからプランを管理してください。',
+            });
+        }
+
+        const checkoutParams = {
             payment_method_types: ['card'],
             line_items: [
                 {
@@ -989,6 +1068,13 @@ app.post('/api/create-checkout-session', authenticate, async (req, res) => {
             },
             success_url: `${req.protocol}://${req.get('host')}/?success=true`,
             cancel_url: `${req.protocol}://${req.get('host')}/`,
+        };
+
+        checkoutParams.customer = customerId;
+
+        const checkoutWindow = Math.floor(Date.now() / (10 * 60 * 1000));
+        const session = await stripe.checkout.sessions.create(checkoutParams, {
+            idempotencyKey: `subscription_checkout_${req.user.id}_${planId}_${checkoutWindow}`,
         });
 
         res.json({ url: session.url });

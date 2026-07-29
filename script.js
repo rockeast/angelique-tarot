@@ -468,7 +468,9 @@ class AuthManager {
         document.getElementById('mypage-email').innerHTML = accountLines.map(escapeHTML).join('<br>');
         document.getElementById('mypage-plan-badge').textContent = this.user.isPremium ? 'Premium ✦' : 'Free';
         if (this.billingBtn) {
-            this.billingBtn.classList.toggle('hidden', !this.user.isPremium);
+            // Keep the portal available when payment needs attention or a
+            // canceled subscription still has billing history.
+            this.billingBtn.classList.toggle('hidden', !this.user.hasBillingAccount);
         }
         
         await this.loadHistory();
@@ -1861,6 +1863,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await res.json();
             if (data.url) {
                 window.location.href = data.url;
+            } else if (data.code === 'SUBSCRIPTION_EXISTS') {
+                closePremiumModal();
+                await authManager.validateSession();
+                alert(data.error);
+                await authManager.openMyPage();
             } else if (data.error) {
                 alert(data.error);
             }
@@ -1877,15 +1884,40 @@ document.addEventListener('DOMContentLoaded', () => {
         modalCtaBtn.addEventListener('click', () => startCheckout(selectedPlan));
     }
 
+    async function waitForPremiumAccess() {
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+            try {
+                const response = await fetch('/api/me', { headers: authManager.getAuthHeaders() });
+                if (response.ok) {
+                    const data = await response.json();
+                    authManager.user = data.user;
+                    localStorage.setItem('angel_user', JSON.stringify(data.user));
+                    if (data.user.isPremium) {
+                        await fm.fetchUsage();
+                        return true;
+                    }
+                }
+            } catch (error) {
+                console.error('Premium status check failed:', error);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+        return false;
+    }
+
     // 決済成功時の処理
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('success') === 'true') {
-        setTimeout(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setTimeout(async () => {
+            const premiumEnabled = await waitForPremiumAccess();
             screenFlash();
-            alert('✦ プレミアムプランへのアップグレードが完了しました ✦\n天使の完全な導きをお楽しみください。');
-            // URLからクエリパラメータを削除
-            window.history.replaceState({}, document.title, window.location.pathname);
-            if (particleSystem) particleSystem.burst(window.innerWidth / 2, window.innerHeight / 2, 100);
+            if (premiumEnabled) {
+                alert('✦ プレミアムプランへのアップグレードが完了しました ✦\n天使の完全な導きをお楽しみください。');
+                if (particleSystem) particleSystem.burst(window.innerWidth / 2, window.innerHeight / 2, 100);
+            } else {
+                alert('決済を受け付けました。プレミアム機能を反映中です。\n数分後に再度ログインしても反映されない場合は、お問い合わせください。');
+            }
         }, 1000);
     }
 
