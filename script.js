@@ -1153,6 +1153,9 @@ class FreemiumManager {
         if (overlay) {
             overlay.classList.remove('hidden');
             this.startCountdown();
+            window.angeliqueAnalytics?.track('premium_offer_view', {
+                source: 'daily_limit',
+            });
         }
     }
 
@@ -1412,8 +1415,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentReadingId = null;
 
     // プレミアムモーダルを開くヘルパー（後続の関数を参照）
-    const triggerPremium = () => {
-        openPremiumModal();
+    const triggerPremium = (context = {}) => {
+        openPremiumModal(context);
     };
 
     const spotlightLockedOption = (button) => {
@@ -1436,7 +1439,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (requiredPremium && (!fm.usage || !fm.usage.isPremium)) {
                 spotlightLockedOption(btn);
-                triggerPremium();
+                triggerPremium({
+                    source: 'spread_lock',
+                    spread: val,
+                });
                 return;
             }
             
@@ -1489,7 +1495,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     if (angelPremiumCta) {
-        angelPremiumCta.addEventListener('click', triggerPremium);
+        angelPremiumCta.addEventListener('click', () => {
+            triggerPremium({
+                source: 'angel_lock_cta',
+                angel: angelPremiumCta.dataset.angel,
+            });
+        });
     }
 
     if (angelOptions.length > 0) {
@@ -1505,6 +1516,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isPremiumLocked) {
                     btn.classList.add('is-previewing');
                     spotlightLockedOption(btn);
+                    if (angelPremiumCta) angelPremiumCta.dataset.angel = angelValue;
+                    window.angeliqueAnalytics?.track('premium_offer_view', {
+                        source: 'angel_lock',
+                        angel: angelValue,
+                    });
                     return;
                 }
 
@@ -1761,7 +1777,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loading.classList.add('hidden');
                 resultText.innerHTML = 'この機能はプレミアム専用です。';
                 resultText.classList.add('visible');
-                openPremiumModal();
+                openPremiumModal({ source: 'premium_feature_gate' });
                 return;
             }
 
@@ -1834,14 +1850,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const limitAdBtn = document.getElementById('limit-ad-btn');
     const modalCtaBtn = document.getElementById('modal-cta-btn');
 
-    function openPremiumModal() {
+    function openPremiumModal(context = {}) {
         if (modalCtaBtn) {
             modalCtaBtn.textContent = localStorage.getItem('angel_token')
                 ? '✦ プレミアムプランを購入する ✦'
                 : '✦ 無料登録して購入する ✦';
         }
         if (premiumModalOverlay) premiumModalOverlay.classList.remove('hidden');
-        window.angeliqueAnalytics?.track('premium_offer_view');
+        window.angeliqueAnalytics?.track('premium_offer_view', context);
     }
     function closePremiumModal() { if (premiumModalOverlay) premiumModalOverlay.classList.add('hidden'); }
 
@@ -1892,8 +1908,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (modalClose) modalClose.addEventListener('click', closePremiumModal);
     if (premiumModalOverlay) premiumModalOverlay.addEventListener('click', (e) => { if (e.target === premiumModalOverlay) closePremiumModal(); });
-    if (premiumTeaserBtn) premiumTeaserBtn.addEventListener('click', openPremiumModal);
-    if (limitPremiumBtn) limitPremiumBtn.addEventListener('click', () => { fm.hideLimitOverlay(); openPremiumModal(); });
+    if (premiumTeaserBtn) premiumTeaserBtn.addEventListener('click', () => {
+        openPremiumModal({ source: 'reading_teaser' });
+    });
+    if (limitPremiumBtn) limitPremiumBtn.addEventListener('click', () => {
+        fm.hideLimitOverlay();
+        openPremiumModal({ source: 'daily_limit_cta' });
+    });
 
     /* ========== 広告視聴ボタン ========== */
     // プラン選択
