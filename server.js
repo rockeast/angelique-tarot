@@ -194,9 +194,25 @@ const publicRootFiles = new Set([
     'tarot-card-meanings.html',
     '404.html',
     'script.js',
+    'analytics.js',
     'style.css',
     'テスト動画.mp4',
 ]);
+
+app.get('/analytics-config.js', (req, res) => {
+    // 測定IDはブラウザへ公開される識別子なので、本番の設定漏れを防ぐ既定値を持たせる。
+    const configuredId = String(process.env.GA4_MEASUREMENT_ID || 'G-2TNLLPTMK7').trim();
+    const measurementId = /^G-[A-Z0-9]+$/i.test(configuredId) ? configuredId : '';
+    const allowLocalhost = process.env.GA4_ALLOW_LOCALHOST === 'true';
+
+    res.type('application/javascript');
+    res.set('Cache-Control', 'no-store');
+    res.send(`window.ANGELIQUE_ANALYTICS = Object.freeze({ measurementId: ${JSON.stringify(measurementId)}, allowLocalhost: ${allowLocalhost} });`);
+});
+
+// PDF生成ライブラリは外部CDNに依存させず、同一オリジンから配信する。
+// 公開ファイルの許可判定より先に、必要なdistディレクトリだけを公開する。
+app.use('/vendor/html2pdf', express.static(path.join(__dirname, 'node_modules', 'html2pdf.js', 'dist')));
 
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return next();

@@ -759,12 +759,10 @@ class AuthManager {
         container.style.boxSizing = 'border-box';
         container.style.padding = '10mm 12mm';
         container.style.margin = '0';
-        // html2canvasは画面外や負のz-indexの要素を空白として処理することがあるため、
-        // 一時的にビューポート内の最前面へ配置する。
-        container.style.position = 'fixed';
-        container.style.left = '0';
-        container.style.top = '0';
-        container.style.zIndex = '2147483647';
+        // html2pdfの内部コンテナが本文の高さを正しく計算できるよう、
+        // PDF本文自体は通常フローに残す（fixed/absoluteにすると高さ0になり白紙化する）。
+        container.style.position = 'relative';
+        container.style.flex = '0 0 auto';
         container.style.pointerEvents = 'none';
         container.style.visibility = 'visible';
         container.style.overflowWrap = 'anywhere';
@@ -842,15 +840,21 @@ class AuthManager {
             </div>
         `;
 
-        document.body.appendChild(container);
-        const hiddenNodes = Array.from(document.body.children)
-            .filter((node) => node !== container)
-            .map((node) => ({ node, visibility: node.style.visibility }));
-        hiddenNodes.forEach(({ node }) => { node.style.visibility = 'hidden'; });
-        const cleanup = () => {
-            hiddenNodes.forEach(({ node, visibility }) => { node.style.visibility = visibility; });
-            container.remove();
-        };
+        // 画面上では見えない固定ラッパーへ置き、サイト本体のレイアウトには影響させない。
+        // html2pdfはcontainerだけを複製するため、ラッパーの透明度はPDFへ継承されない。
+        const captureHost = document.createElement('div');
+        captureHost.style.position = 'fixed';
+        captureHost.style.left = '0';
+        captureHost.style.top = '0';
+        captureHost.style.width = '1px';
+        captureHost.style.height = '1px';
+        captureHost.style.overflow = 'hidden';
+        captureHost.style.opacity = '0';
+        captureHost.style.pointerEvents = 'none';
+        captureHost.style.zIndex = '-1';
+        captureHost.appendChild(container);
+        document.body.appendChild(captureHost);
+        const cleanup = () => captureHost.remove();
         await (document.fonts?.ready || Promise.resolve());
         await Promise.all(Array.from(container.querySelectorAll('img')).map((image) => {
             if (image.complete) return Promise.resolve();
@@ -859,6 +863,22 @@ class AuthManager {
                 image.addEventListener('error', resolve, { once: true });
             });
         }));
+
+        // DOMのレイアウトとWebフォントが描画へ反映されるまで2フレーム待つ。
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+        const captureWidth = Math.max(1, container.scrollWidth);
+        const captureHeight = Math.max(1, container.scrollHeight);
+        // iOS/Safariは巨大なcanvasを生成すると、例外を出さず白紙を返す場合がある。
+        // 1辺と総画素数の両方を安全圏へ収めつつ、可能な限り高解像度を維持する。
+        const maxCanvasDimension = 4096;
+        const maxCanvasPixels = 12000000;
+        const renderScale = Math.min(
+            2,
+            maxCanvasDimension / captureWidth,
+            maxCanvasDimension / captureHeight,
+            Math.sqrt(maxCanvasPixels / (captureWidth * captureHeight))
+        );
         
         // オプション設定
         const opt = {
@@ -866,21 +886,22 @@ class AuthManager {
             filename:     `tarot_reading_${new Date(item.timestamp).getTime()}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  {
-                scale: 2,
+                scale: Math.max(0.75, renderScale),
                 useCORS: true,
                 allowTaint: false,
                 logging: false,
                 backgroundColor: '#fdfbf7',
                 scrollX: 0,
                 scrollY: 0,
-                windowWidth: Math.max(document.documentElement.clientWidth, container.scrollWidth),
-                windowHeight: Math.max(document.documentElement.clientHeight, container.scrollHeight),
+                windowWidth: Math.max(document.documentElement.clientWidth, captureWidth),
+                windowHeight: Math.max(document.documentElement.clientHeight, captureHeight),
                 onclone: (clonedDocument) => {
                     const clonedContainer = clonedDocument.querySelector('[data-pdf-export="true"]');
                     if (clonedContainer) {
-                        clonedContainer.style.left = '0';
-                        clonedContainer.style.top = '0';
-                        clonedContainer.style.zIndex = '1';
+                        clonedContainer.style.position = 'relative';
+                        clonedContainer.style.left = 'auto';
+                        clonedContainer.style.top = 'auto';
+                        clonedContainer.style.zIndex = 'auto';
                         clonedContainer.style.visibility = 'visible';
                     }
                 }
@@ -892,7 +913,33 @@ class AuthManager {
         // html2pdf実行
         if (typeof html2pdf !== 'undefined') {
             try {
-                await html2pdf().set(opt).from(container).toPdf().get('pdf').then(function (pdf) {
+                const worker = html2pdf().set(opt).from(container).toCanvas();
+                const canvas = await worker.get('canvas');
+                if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                    throw new Error('PDF capture canvas is empty');
+                }
+
+                // 背景色以外の画素が存在することを確認し、白紙PDFの保存を防ぐ。
+                const context = canvas.getContext('2d', { willReadFrequently: true });
+                let hasVisibleContent = false;
+                if (context) {
+                    const stepX = Math.max(1, Math.floor(canvas.width / 40));
+                    const stepY = Math.max(1, Math.floor(canvas.height / 60));
+                    for (let y = 0; y < canvas.height && !hasVisibleContent; y += stepY) {
+                        for (let x = 0; x < canvas.width; x += stepX) {
+                            const [r, g, b, a] = context.getImageData(x, y, 1, 1).data;
+                            if (a > 0 && (Math.abs(r - 253) > 8 || Math.abs(g - 251) > 8 || Math.abs(b - 247) > 8)) {
+                                hasVisibleContent = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!hasVisibleContent) {
+                    throw new Error('PDF capture produced a blank canvas');
+                }
+
+                await worker.toPdf().get('pdf').then(function (pdf) {
                     const totalPages = pdf.internal.getNumberOfPages();
                     for (let i = 1; i <= totalPages; i++) {
                         pdf.setPage(i);
@@ -918,6 +965,12 @@ class AuthManager {
                         drawDiamond(200, 287);
                     }
                 }).save();
+                window.angeliqueAnalytics?.track('pdf_download', {
+                    document_type: 'tarot_reading',
+                });
+            } catch (error) {
+                console.error('PDF export failed:', error);
+                alert('PDFの作成に失敗しました。ページを再読み込みして、もう一度お試しください。');
             } finally {
                 cleanup();
             }
@@ -952,6 +1005,7 @@ class AuthManager {
             }
 
             if (!this.isLoginMode) {
+                window.angeliqueAnalytics?.track('sign_up', { method: 'email' });
                 this.isLoginMode = true;
                 this.updateFormUI();
                 this.errorMsg.textContent = data.message || '登録を受け付けました。ログインしてください。';
@@ -962,6 +1016,7 @@ class AuthManager {
 
             this.token = data.token;
             this.user = data.user;
+            window.angeliqueAnalytics?.track('login', { method: 'email' });
 
             localStorage.setItem('angel_token', this.token);
             localStorage.setItem('angel_user', JSON.stringify(this.user));
@@ -1473,6 +1528,12 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ========== 1. パック開封 ========== */
     deckPack.addEventListener('click', () => {
         if (!fm.canRead()) { fm.showLimitOverlay(); return; }
+
+        window.angeliqueAnalytics?.track('tarot_draw_start', {
+            spread: String(selectedSpread),
+            theme: selectedTheme,
+            angel: selectedAngel,
+        });
         
         playSound('se-open');
         const rect = deckPack.getBoundingClientRect();
@@ -1576,13 +1637,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const positionLabelsHexagram = ['過去', '現在', '未来', 'あなたの本心', '相手の本心', '神託 (助言)', '最終結果'];
         const positionLabels10 = ['現状', '障害', '目標', '原因', '過去', '未来', '立場', '環境', '希望/不安', '最終結果'];
 
+        // 前回の展開法クラスを必ず外してから、今回の配置を適用する。
+        revealedCardsContainer.classList.remove('celtic-cross-layout', 'hexagram-layout');
         if (selectedSpread === 10) {
             revealedCardsContainer.classList.add('celtic-cross-layout');
         } else if (selectedSpread === 'hexagram') {
             revealedCardsContainer.classList.add('hexagram-layout');
-        } else {
-            revealedCardsContainer.classList.remove('celtic-cross-layout');
-            revealedCardsContainer.classList.remove('hexagram-layout');
         }
 
         chosenCards.forEach((card, idx) => {
@@ -1719,6 +1779,12 @@ document.addEventListener('DOMContentLoaded', () => {
             resultText.classList.add('visible');
             retryBtn.classList.remove('hidden');
             playSound('se-success');
+            window.angeliqueAnalytics?.track('tarot_reading_complete', {
+                spread: String(selectedSpread),
+                theme: selectedTheme,
+                angel: selectedAngel,
+                premium_result: Boolean(data.isFull),
+            });
 
             // 無料ユーザーにプレミアム誘導を表示
             if (!data.isFull && premiumTeaser) {
@@ -1775,6 +1841,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : '✦ 無料登録して購入する ✦';
         }
         if (premiumModalOverlay) premiumModalOverlay.classList.remove('hidden');
+        window.angeliqueAnalytics?.track('premium_offer_view');
     }
     function closePremiumModal() { if (premiumModalOverlay) premiumModalOverlay.classList.add('hidden'); }
 
@@ -1862,6 +1929,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await res.json();
             if (data.url) {
+                window.angeliqueAnalytics?.track('begin_checkout', { plan_id: plan });
                 window.location.href = data.url;
             } else if (data.code === 'SUBSCRIPTION_EXISTS') {
                 closePremiumModal();
