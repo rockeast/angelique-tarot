@@ -36,6 +36,12 @@
     tag.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
     document.head.appendChild(tag);
 
+    const allowedAngels = new Set(['michael', 'raphael', 'gabriel', 'uriel']);
+    const angelIntent = new URLSearchParams(window.location.search).get('angel');
+    if (allowedAngels.has(angelIntent)) {
+        window.angeliqueAnalytics.track('angel_intent', { angel: angelIntent });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.faq-video video').forEach((video) => {
             const videoName = video.getAttribute('aria-label') || video.currentSrc.split('/').pop() || 'guide';
