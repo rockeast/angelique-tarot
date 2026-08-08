@@ -1849,12 +1849,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const limitShareBtn = document.getElementById('limit-share-btn');
     const limitAdBtn = document.getElementById('limit-ad-btn');
     const modalCtaBtn = document.getElementById('modal-cta-btn');
+    let billingEnabled = false;
 
     function openPremiumModal(context = {}) {
         if (modalCtaBtn) {
-            modalCtaBtn.textContent = localStorage.getItem('angel_token')
-                ? '✦ プレミアムプランを購入する ✦'
-                : '✦ 無料登録して購入する ✦';
+            if (billingEnabled) {
+                modalCtaBtn.textContent = localStorage.getItem('angel_token')
+                    ? '✦ プレミアムプランを購入する ✦'
+                    : '✦ 無料登録して購入する ✦';
+            } else {
+                modalCtaBtn.textContent = '新規受付を一時停止しています';
+                modalCtaBtn.disabled = true;
+            }
         }
         if (premiumModalOverlay) premiumModalOverlay.classList.remove('hidden');
         window.angeliqueAnalytics?.track('premium_offer_view', context);
@@ -1880,6 +1886,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!response.ok) throw new Error('price request failed');
 
         const prices = await response.json();
+        if (!prices.billingEnabled) {
+            const comingSoon = document.getElementById('modal-coming-soon');
+            if (comingSoon) comingSoon.textContent = 'プレミアムプランの新規受付は現在停止しています。';
+            if (modalCtaBtn) {
+                modalCtaBtn.textContent = '新規受付を一時停止しています';
+                modalCtaBtn.disabled = true;
+            }
+            return;
+        }
+
+        billingEnabled = true;
         for (const plan of ['monthly', 'yearly']) {
             const price = prices[plan];
             const amountEl = document.querySelector(`[data-price-amount="${plan}"]`);
@@ -1932,6 +1949,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Stripe Checkout呼び出し
     async function startCheckout(plan) {
+        if (!billingEnabled) {
+            alert('プレミアムプランの新規受付は現在停止しています。');
+            return;
+        }
+
         if (!authManager.token) {
             pendingCheckoutPlan = plan;
             closePremiumModal();
@@ -1957,6 +1979,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 await authManager.validateSession();
                 alert(data.error);
                 await authManager.openMyPage();
+            } else if (data.code === 'BILLING_DISABLED') {
+                billingEnabled = false;
+                alert(data.error);
             } else if (data.error) {
                 alert(data.error);
             }
@@ -1964,8 +1989,10 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error(e);
             alert('決済画面への移動に失敗しました。');
         } finally {
-            modalCtaBtn.disabled = false;
-            modalCtaBtn.innerHTML = '✦ プレミアムプランを購入する ✦';
+            modalCtaBtn.disabled = !billingEnabled;
+            modalCtaBtn.innerHTML = billingEnabled
+                ? '✦ プレミアムプランを購入する ✦'
+                : '新規受付を一時停止しています';
         }
     }
 

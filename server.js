@@ -25,6 +25,9 @@ const app = express();
 app.set('trust proxy', 1);
 const port = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+// Billing is opt-in so a missing environment variable can never accidentally
+// reopen paid checkout after a deployment or provider change.
+const billingEnabled = process.env.BILLING_ENABLED === 'true';
 
 const requiredEnv = [
     'SUPABASE_URL',
@@ -965,6 +968,11 @@ ${promptContext}
    💳 Stripe決済 API (本番想定)
    ============================================================ */
 app.get('/api/prices', async (req, res) => {
+    if (!billingEnabled) {
+        res.set('Cache-Control', 'no-store');
+        return res.json({ billingEnabled: false });
+    }
+
     try {
         const [monthlyPrice, yearlyPrice] = await Promise.all([
             stripe.prices.retrieve(process.env.STRIPE_PRICE_MONTHLY),
@@ -984,6 +992,7 @@ app.get('/api/prices', async (req, res) => {
 
         res.set('Cache-Control', 'public, max-age=300');
         res.json({
+            billingEnabled: true,
             livemode: monthlyPrice.livemode,
             monthly: serializePrice(monthlyPrice),
             yearly: serializePrice(yearlyPrice),
@@ -1040,6 +1049,13 @@ async function ensureStripeCustomer(profile, user) {
 }
 
 app.post('/api/create-checkout-session', authenticate, async (req, res) => {
+    if (!billingEnabled) {
+        return res.status(503).json({
+            code: 'BILLING_DISABLED',
+            error: 'プレミアムプランの新規受付は現在停止しています。',
+        });
+    }
+
     if (!req.user) return res.status(401).json({ error: 'ログインが必要です。' });
     
     const { planId } = req.body;
