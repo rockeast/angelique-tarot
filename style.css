@@ -1677,6 +1677,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);
 .celestial-products .affiliate-copy .affiliate-eyebrow { font-size: .73rem; color: var(--gold); }
 .celestial-products .affiliate-cta { margin-top: auto; padding: 12px 10px; font-size: .8rem; justify-content: center; text-align: center; }
 .celestial-products .affiliate-note { font-size: .7rem; }
+.celestial-companions-heading { color: var(--gold-light); font-size: 1rem; text-align: center; margin: 32px 0 20px; line-height: 1.8; font-weight: 400; }
+.celestial-companions .affiliate-card { border-radius: 20px; }
 .affiliate-selection-note { color: rgba(245,230,184,.8); text-align: center; font-size: .8rem; line-height: 2; margin: 24px 0 8px; }
 @media (max-width: 540px) {
     .celestial-products { grid-template-columns: 1fr; gap: 24px; }
