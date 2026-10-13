@@ -65,6 +65,7 @@
             link.addEventListener('click', () => {
                 window.angeliqueAnalytics.track(link.dataset.analyticsEvent, {
                     item_id: link.dataset.item,
+                    placement: link.dataset.placement,
                     link_url: link.href,
                 });
             });
