@@ -1602,7 +1602,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);
     letter-spacing: .06em;
 }
 
-.affiliate-copy h2 {
+.affiliate-copy h2,
+.affiliate-copy h3 {
     margin: 0 0 12px;
     color: var(--gold-light);
     font-family: var(--font-heading);
@@ -1651,6 +1652,35 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);
     color: rgba(255, 255, 255, .56);
     font-size: .72rem;
     line-height: 1.7;
+}
+
+/* 商品は明るい販売画像を加工せず、夜空色の額縁で包む。 */
+.celestial-products {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+.celestial-products .affiliate-card {
+    min-width: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    gap: 22px;
+    padding: 22px 18px;
+    border-radius: 100px 100px 20px 20px;
+    background: radial-gradient(ellipse at 50% 0, rgba(70, 72, 130, .3), transparent 65%), linear-gradient(160deg, #15172f, #0c0b1d);
+}
+.celestial-products .affiliate-image-link { width: min(100%, 240px); margin: 0 auto; border-radius: 12px; }
+.celestial-products .affiliate-copy { display: flex; flex-direction: column; height: 100%; }
+.celestial-products .affiliate-copy h3 { font-size: 1.15rem; line-height: 1.65; }
+.celestial-products .affiliate-copy p, .celestial-products .affiliate-copy li { font-size: .84rem; }
+.celestial-products .affiliate-copy .affiliate-eyebrow { font-size: .73rem; color: var(--gold); }
+.celestial-products .affiliate-cta { margin-top: auto; padding: 12px 10px; font-size: .8rem; justify-content: center; text-align: center; }
+.celestial-products .affiliate-note { font-size: .7rem; }
+.affiliate-selection-note { color: rgba(245,230,184,.8); text-align: center; font-size: .8rem; line-height: 2; margin: 24px 0 8px; }
+@media (max-width: 540px) {
+    .celestial-products { grid-template-columns: 1fr; gap: 24px; }
+    .celestial-products .affiliate-card { padding: 26px 20px 22px; }
 }
 
 @media (max-width: 640px) {
