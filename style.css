@@ -1524,6 +1524,133 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-body);
 }
 
 /* ========================================
+   楽天アフィリエイト
+   ======================================== */
+.affiliate-recommendation {
+    width: min(92%, 900px);
+    margin: 56px auto 12px;
+    position: relative;
+    z-index: 10;
+}
+
+.affiliate-pr-label {
+    display: inline-flex;
+    margin: 0 0 10px 10px;
+    padding: 4px 10px;
+    border: 1px solid rgba(212, 168, 83, .38);
+    border-radius: 999px;
+    color: var(--gold-light);
+    background: rgba(12, 10, 26, .78);
+    font-size: .7rem;
+    letter-spacing: .08em;
+}
+
+.affiliate-card {
+    display: grid;
+    grid-template-columns: minmax(190px, 250px) 1fr;
+    gap: 28px;
+    align-items: center;
+    padding: 28px;
+    border: 1px solid rgba(212, 168, 83, .34);
+    border-radius: 24px;
+    background: linear-gradient(135deg, rgba(25, 18, 48, .92), rgba(10, 8, 24, .94));
+    box-shadow: 0 22px 70px rgba(0, 0, 0, .38), inset 0 1px rgba(255, 255, 255, .05);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+.affiliate-image-link {
+    display: block;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 18px;
+    border: 1px solid rgba(245, 230, 184, .25);
+    background: #fff;
+}
+
+.affiliate-image-link img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.affiliate-eyebrow {
+    margin: 0 0 6px;
+    color: var(--gold);
+    font-size: .78rem;
+    letter-spacing: .06em;
+}
+
+.affiliate-copy h2 {
+    margin: 0 0 12px;
+    color: var(--gold-light);
+    font-family: var(--font-heading);
+    font-size: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.affiliate-copy p,
+.affiliate-copy li {
+    color: rgba(255, 255, 255, .84);
+    line-height: 1.8;
+}
+
+.affiliate-copy ul {
+    margin: 12px 0 18px;
+    padding-left: 1.25rem;
+}
+
+.affiliate-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 22px;
+    border-radius: 999px;
+    color: #1a1020;
+    background: linear-gradient(135deg, #f5e6b8, #d4a853);
+    text-decoration: none;
+    font-weight: 700;
+    box-shadow: 0 8px 28px rgba(212, 168, 83, .22);
+    transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.affiliate-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 34px rgba(212, 168, 83, .36);
+}
+
+.affiliate-note {
+    margin: 10px 0 0;
+    font-size: .72rem;
+    opacity: .66;
+}
+
+.affiliate-disclosure {
+    margin: 12px 12px 0;
+    color: rgba(255, 255, 255, .56);
+    font-size: .72rem;
+    line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+    .affiliate-recommendation { margin-top: 42px; }
+    .affiliate-card {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 20px;
+    }
+    .affiliate-image-link {
+        width: min(100%, 260px);
+        margin: 0 auto;
+    }
+    .affiliate-cta {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ========================================
    📜 フッター
    ======================================== */
 .app-footer {

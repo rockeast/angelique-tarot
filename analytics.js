@@ -60,5 +60,14 @@
                 window.angeliqueAnalytics.track('video_complete', { video_title: videoName });
             });
         });
+
+        document.querySelectorAll('[data-analytics-event]').forEach((link) => {
+            link.addEventListener('click', () => {
+                window.angeliqueAnalytics.track(link.dataset.analyticsEvent, {
+                    item_id: link.dataset.item,
+                    link_url: link.href,
+                });
+            });
+        });
     });
 })();
